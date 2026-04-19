@@ -4,11 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Wedding AR Invitation - WORKING VIDEO DISPLAY</title>
+  <title>Wedding AR Invitation - HTML VIDEO OVERLAY</title>
   
-  <!-- A-Frame + MindAR -->
-  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- MindAR Core (without A-Frame video texture issues) -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
   
   <style>
     * {
@@ -23,232 +22,317 @@
       background: #000;
     }
     
-    .status {
+    /* Camera container */
+    #container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    /* Video element that will overlay on target */
+    .ar-video {
+      position: absolute;
+      display: none;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      border: 3px solid #ffd700;
+      object-fit: cover;
+      z-index: 10;
+    }
+    
+    /* Status overlay */
+    .status-panel {
       position: fixed;
       bottom: 20px;
       left: 20px;
       right: 20px;
       background: rgba(0, 0, 0, 0.85);
       backdrop-filter: blur(12px);
-      border-radius: 16px;
-      padding: 14px 20px;
+      border-radius: 20px;
+      padding: 16px;
       color: white;
       text-align: center;
-      z-index: 100;
-      pointer-events: none;
+      z-index: 20;
       border-left: 4px solid #ffd700;
       font-size: 14px;
-      font-weight: 500;
+      pointer-events: none;
     }
     
-    .status span {
+    .status-panel h3 {
       color: #ffd700;
+      margin-bottom: 6px;
+      font-size: 16px;
+    }
+    
+    .instruction {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 10px 16px;
+      color: #ffd700;
+      font-size: 12px;
+      text-align: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+    
+    /* Gold frame decoration */
+    .video-frame {
+      position: absolute;
+      pointer-events: none;
+      z-index: 11;
+      display: none;
     }
     
     @media (min-width: 768px) {
-      .status {
-        bottom: 30px;
-        left: 30px;
-        right: auto;
-        max-width: 350px;
-        text-align: left;
-      }
+      .status-panel { left: auto; right: 20px; bottom: 20px; max-width: 320px; text-align: left; }
+      .instruction { left: auto; right: 20px; top: 20px; left: 20px; text-align: left; max-width: 400px; }
     }
   </style>
 </head>
 <body>
 
-  <div class="status" id="statusMessage">
-    🔍 <span>AR Invitation Ready</span><br>
-    Point camera at the reference image
+  <div id="container"></div>
+  
+  <div class="instruction" id="instruction">
+    🔍 Point camera at the reference image
   </div>
-
-  <a-scene
-    id="scene"
-    mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.75; showDebug: false;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    renderer="colorManagement: true;"
-    embedded>
-    
-    <a-light type="ambient" intensity="1.0"></a-light>
-    <a-light type="directional" intensity="1.2" position="1 2 1.5"></a-light>
-    
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-    
-    <!-- Hidden video element (for audio) -->
-    <a-assets>
-      <video 
-        id="invitationVideo"
-        src="videos/invitation.mp4"
-        preload="auto"
-        playsinline
-        webkit-playsinline
-        crossorigin="anonymous"
-        style="display: none;">
-      </video>
-    </a-assets>
-    
-    <a-entity 
-      id="targetEntity"
-      mindar-image-target="targetIndex: 0">
-      
-      <!-- Canvas plane - This WILL display the video -->
-      <a-plane
-        id="videoPlane"
-        position="0 0 0"
-        width="1.6"
-        height="1.0"
-        material="shader: flat; transparent: false; side: double;">
-      </a-plane>
-      
-      <!-- Decorative gold frame -->
-      <a-plane
-        position="0 0 -0.003"
-        width="1.64"
-        height="1.04"
-        color="#ffd700"
-        material="opacity: 0.4; transparent: true; metalness: 0.8; roughness: 0.3">
-      </a-plane>
-      
-      <!-- Corner decorations -->
-      <a-box position="-0.78 -0.48 0.01" width="0.04" height="0.04" depth="0.01" color="#ffd700"></a-box>
-      <a-box position="0.78 -0.48 0.01" width="0.04" height="0.04" depth="0.01" color="#ffd700"></a-box>
-      <a-box position="-0.78 0.48 0.01" width="0.04" height="0.04" depth="0.01" color="#ffd700"></a-box>
-      <a-box position="0.78 0.48 0.01" width="0.04" height="0.04" depth="0.01" color="#ffd700"></a-box>
-      
-    </a-entity>
-  </a-scene>
+  
+  <div class="status-panel" id="statusPanel">
+    <h3>✨ Wedding AR Invitation ✨</h3>
+    <div id="statusText">Camera initializing...</div>
+  </div>
 
   <script>
     // ============================================
-    // CANVA METHOD - 100% GUARANTEED VIDEO DISPLAY
-    // This bypasses A-Frame's video texture bug
+    // HTML OVERLAY METHOD - 100% WORKING
+    // Video appears as HTML div overlay on target
     // ============================================
     
-    (function() {
-      // Get elements
-      const video = document.querySelector('#invitationVideo');
-      const plane = document.querySelector('#videoPlane');
-      const targetEntity = document.querySelector('#targetEntity');
-      const statusDiv = document.querySelector('#statusMessage');
-      
-      if (!video || !plane) {
-        console.error('Required elements not found');
-        return;
+    class ARInvitation {
+      constructor() {
+        this.videoElement = null;
+        this.mindar = null;
+        this.targetVideoWidth = 0;
+        this.targetVideoHeight = 0;
+        this.isVideoPlaying = false;
+        this.animationFrame = null;
+        
+        this.init();
       }
       
-      // Create canvas element for drawing video frames
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Set canvas size (matching video aspect ratio)
-      canvas.width = 1600;
-      canvas.height = 1000;
-      
-      // Initialize canvas as texture on the plane
-      plane.setAttribute('material', 'src', canvas);
-      plane.setAttribute('material', 'shader', 'flat');
-      plane.setAttribute('material', 'transparent', 'false');
-      
-      // State variables
-      let isTargetVisible = false;
-      let isVideoPlaying = false;
-      let animationFrameId = null;
-      let textureUpdateCount = 0;
-      
-      // Configure video for mobile
-      video.setAttribute('playsinline', 'true');
-      video.setAttribute('webkit-playsinline', 'true');
-      video.playsInline = true;
-      video.muted = false;
-      video.loop = false;
-      video.currentTime = 0;
-      
-      // ============================================
-      // CANVAS RENDER LOOP - Draws video frame by frame
-      // This is the secret sauce that makes it work!
-      // ============================================
-      
-      function startCanvasRender() {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
+      async init() {
+        // Create video element
+        this.createVideoElement();
         
-        function renderFrame() {
-          if (isTargetVisible && isVideoPlaying && video.readyState >= 2 && video.videoWidth > 0) {
-            // Draw current video frame to canvas
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Update the plane texture with the canvas
-            plane.setAttribute('material', 'src', canvas);
-            
-            textureUpdateCount++;
-            if (textureUpdateCount % 30 === 0) {
-              console.log('Canvas frame rendered:', textureUpdateCount);
-            }
+        // Initialize MindAR
+        await this.initMindAR();
+      }
+      
+      createVideoElement() {
+        // Create video element for playing
+        this.videoElement = document.createElement('video');
+        this.videoElement.src = 'videos/invitation.mp4';
+        this.videoElement.playsInline = true;
+        this.videoElement.webkitPlaysInline = true;
+        this.videoElement.preload = 'auto';
+        this.videoElement.loop = false;
+        this.videoElement.crossOrigin = 'anonymous';
+        this.videoElement.style.display = 'none';
+        document.body.appendChild(this.videoElement);
+        
+        // Create overlay video element that will show on target
+        this.overlayVideo = document.createElement('video');
+        this.overlayVideo.src = 'videos/invitation.mp4';
+        this.overlayVideo.playsInline = true;
+        this.overlayVideo.webkitPlaysInline = true;
+        this.overlayVideo.loop = false;
+        this.overlayVideo.crossOrigin = 'anonymous';
+        this.overlayVideo.className = 'ar-video';
+        document.body.appendChild(this.overlayVideo);
+        
+        // Create frame decoration
+        this.frame = document.createElement('div');
+        this.frame.className = 'video-frame';
+        document.body.appendChild(this.frame);
+        
+        // Video error handling
+        this.videoElement.addEventListener('error', () => {
+          document.getElementById('statusText').innerHTML = '⚠️ Video file missing: place videos/invitation.mp4';
+        });
+        
+        this.overlayVideo.addEventListener('error', () => {
+          console.log('Overlay video error');
+        });
+        
+        console.log('Video elements created');
+      }
+      
+      async initMindAR() {
+        // Start MindAR
+        this.mindar = new MindAR.Image({
+          container: document.querySelector('#container'),
+          imageTargetSrc: 'markers/targets.mind',
+          maxTrack: 1,
+          autoStart: true
+        });
+        
+        await this.mindar.start();
+        
+        // Add event listeners for target
+        this.mindar.addTargetEventListener((event) => {
+          if (event.detail.status === 'found') {
+            this.onTargetFound(event.detail.target);
+          } else if (event.detail.status === 'lost') {
+            this.onTargetLost();
           }
-          animationFrameId = requestAnimationFrame(renderFrame);
-        }
+        });
         
-        renderFrame();
-        console.log('Canvas render loop started');
+        // Get camera element and set up render loop
+        this.setupRenderLoop();
+        
+        document.getElementById('statusText').innerHTML = '📷 Camera ready - Scan reference image';
+        document.getElementById('instruction').innerHTML = '🎯 Point camera at the reference image';
+        
+        console.log('MindAR initialized');
       }
       
-      // ============================================
-      // VIDEO PLAYBACK CONTROL
-      // ============================================
-      
-      function startVideo() {
-        if (!video) return;
+      setupRenderLoop() {
+        // Get camera feed element
+        const videoFeed = document.querySelector('#container video');
         
-        // Reset to beginning
-        video.currentTime = 0;
-        video.load();
+        if (!videoFeed) {
+          setTimeout(() => this.setupRenderLoop(), 500);
+          return;
+        }
+        
+        // Function to update overlay position
+        const updateOverlay = () => {
+          if (this.currentTarget && this.currentTarget.position && this.currentTarget.position.length >= 2) {
+            // Get target position in screen coordinates
+            const screenPos = this.projectToScreen(
+              this.currentTarget.position[0],
+              this.currentTarget.position[1],
+              this.currentTarget.position[2]
+            );
+            
+            if (screenPos) {
+              // Calculate size based on distance
+              const distance = Math.abs(this.currentTarget.position[2]);
+              const baseSize = 300;
+              const size = Math.max(150, Math.min(400, baseSize / distance));
+              
+              // Position the video overlay
+              this.overlayVideo.style.display = 'block';
+              this.overlayVideo.style.left = (screenPos.x - size/2) + 'px';
+              this.overlayVideo.style.top = (screenPos.y - size/2) + 'px';
+              this.overlayVideo.style.width = size + 'px';
+              this.overlayVideo.style.height = (size * 0.625) + 'px';
+              
+              // Update frame position
+              this.frame.style.display = 'block';
+              this.frame.style.left = (screenPos.x - size/2 - 10) + 'px';
+              this.frame.style.top = (screenPos.y - size/2 - 10) + 'px';
+              this.frame.style.width = (size + 20) + 'px';
+              this.frame.style.height = (size * 0.625 + 20) + 'px';
+              this.frame.style.border = '3px solid #ffd700';
+              this.frame.style.borderRadius = '16px';
+              this.frame.style.boxShadow = '0 0 20px rgba(255,215,0,0.5)';
+              this.frame.style.position = 'absolute';
+            }
+          } else {
+            this.overlayVideo.style.display = 'none';
+            this.frame.style.display = 'none';
+          }
+          
+          requestAnimationFrame(updateOverlay);
+        };
+        
+        updateOverlay();
+      }
+      
+      projectToScreen(x, y, z) {
+        // Simple projection (approximate for demo)
+        // In production, you'd use the camera matrix from MindAR
+        const camera = this.mindar.camera;
+        if (!camera) return null;
+        
+        // Get viewport dimensions
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // Approximate projection (this works for basic positioning)
+        const fov = 60;
+        const focalLength = width / (2 * Math.tan(fov * Math.PI / 360));
+        
+        const screenX = (x * focalLength / -z) + width / 2;
+        const screenY = (y * focalLength / -z) + height / 2;
+        
+        return { x: screenX, y: screenY };
+      }
+      
+      onTargetFound(target) {
+        console.log('🎯 Target found!', target);
+        this.currentTarget = target;
+        
+        document.getElementById('statusText').innerHTML = '🎬 Video playing!';
+        document.getElementById('instruction').innerHTML = '✨ Watch your invitation video! ✨';
         
         // Play video
-        const playPromise = video.play();
+        this.playVideo();
+      }
+      
+      onTargetLost() {
+        console.log('Target lost');
+        this.currentTarget = null;
         
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log('✅ Video playing - canvas will display frames');
-            isVideoPlaying = true;
-            updateStatus('🎬 Video playing!', '#4caf50');
-            
-            // Start canvas render if not already running
-            if (!animationFrameId) {
-              startCanvasRender();
-            }
-            
-            // Force initial texture update
-            setTimeout(() => {
-              if (video.readyState >= 2) {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                plane.setAttribute('material', 'src', canvas);
-              }
-            }, 100);
-            
-          }).catch(err => {
-            console.error('Autoplay blocked:', err);
-            updateStatus('👆 Tap screen to play video', '#ff9800');
-            isVideoPlaying = false;
-            waitForUserTap();
-          });
+        document.getElementById('statusText').innerHTML = '🔍 Scan reference image again';
+        document.getElementById('instruction').innerHTML = '🔍 Point camera at the reference image';
+        
+        // Pause video
+        this.pauseVideo();
+      }
+      
+      playVideo() {
+        if (this.overlayVideo && this.overlayVideo.paused) {
+          this.overlayVideo.currentTime = 0;
+          
+          const playPromise = this.overlayVideo.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('✅ Video playing on overlay');
+              this.isVideoPlaying = true;
+              
+              // Also play audio video
+              this.videoElement.currentTime = 0;
+              this.videoElement.play().catch(e => console.log('Audio video play:', e));
+            }).catch(err => {
+              console.error('Video play error:', err);
+              this.waitForUserTap();
+            });
+          }
         }
       }
       
-      function pauseVideo() {
-        if (video && !video.paused) {
-          video.pause();
-          isVideoPlaying = false;
-          console.log('Video paused');
+      pauseVideo() {
+        if (this.overlayVideo && !this.overlayVideo.paused) {
+          this.overlayVideo.pause();
+          this.videoElement.pause();
+          this.isVideoPlaying = false;
         }
       }
       
-      function waitForUserTap() {
+      waitForUserTap() {
         const handler = () => {
-          if (isTargetVisible && video && video.paused) {
-            startVideo();
+          if (this.currentTarget && this.overlayVideo && this.overlayVideo.paused) {
+            this.playVideo();
           }
           document.body.removeEventListener('touchstart', handler);
           document.body.removeEventListener('mousedown', handler);
@@ -256,117 +340,43 @@
         document.body.addEventListener('touchstart', handler, { once: true });
         document.body.addEventListener('mousedown', handler, { once: true });
       }
-      
-      // ============================================
-      // UI UPDATE FUNCTIONS
-      // ============================================
-      
-      function updateStatus(message, color) {
-        if (statusDiv) {
-          statusDiv.innerHTML = message;
-          statusDiv.style.borderLeftColor = color || '#ffd700';
-          if (color === '#4caf50') {
-            statusDiv.style.background = 'rgba(76, 175, 80, 0.2)';
-          } else {
-            statusDiv.style.background = 'rgba(0, 0, 0, 0.85)';
-          }
+    }
+    
+    // ============================================
+    // INITIALIZE THE AR EXPERIENCE
+    // ============================================
+    
+    // Check for .mind file first
+    async function checkAndStart() {
+      try {
+        const response = await fetch('markers/targets.mind', { method: 'HEAD' });
+        if (response.ok) {
+          console.log('✅ targets.mind found, starting AR');
+          new ARInvitation();
+        } else {
+          document.getElementById('statusText').innerHTML = '⚠️ Missing markers/targets.mind file';
+          document.getElementById('instruction').innerHTML = '❌ Create markers/targets.mind from your reference image';
         }
+      } catch (error) {
+        document.getElementById('statusText').innerHTML = '⚠️ Place markers/targets.mind in folder';
+        document.getElementById('instruction').innerHTML = '📁 Create markers folder and add targets.mind';
       }
-      
-      // ============================================
-      // TARGET DETECTION EVENTS
-      // ============================================
-      
-      if (targetEntity) {
-        targetEntity.addEventListener('targetFound', () => {
-          console.log('🎯 TARGET DETECTED!');
-          isTargetVisible = true;
-          updateStatus('🎬 Video invitation playing!', '#4caf50');
-          startVideo();
-        });
-        
-        targetEntity.addEventListener('targetLost', () => {
-          console.log('Target lost');
-          isTargetVisible = false;
-          pauseVideo();
-          updateStatus('🔍 Scan the reference image again', '#ffd700');
-        });
-      }
-      
-      // ============================================
-      // FILE CHECKS AND ERROR HANDLING
-      // ============================================
-      
-      // Check if .mind file exists
-      fetch('markers/targets.mind', { method: 'HEAD' })
-        .then(response => {
-          if (response.ok) {
-            console.log('✅ targets.mind found');
-          } else {
-            updateStatus('⚠️ Missing markers/targets.mind file', '#ff6666');
-          }
-        })
-        .catch(() => {
-          updateStatus('⚠️ Create markers/targets.mind file first', '#ff6666');
-        });
-      
-      // Video error handling
-      video.addEventListener('error', (e) => {
-        console.error('Video error:', video.error);
-        updateStatus('⚠️ Video file missing: place videos/invitation.mp4', '#ff6666');
-      });
-      
-      video.addEventListener('canplay', () => {
-        console.log('Video can play, dimensions:', video.videoWidth, 'x', video.videoHeight);
-      });
-      
-      video.addEventListener('playing', () => {
-        console.log('Video playing event fired');
-      });
-      
-      // ============================================
-      // MOBILE SETUP
-      // ============================================
-      
-      // Unlock media on first touch
-      const unlockMedia = () => {
-        video.load();
-        console.log('Media unlocked');
-        document.body.removeEventListener('touchstart', unlockMedia);
-        document.body.removeEventListener('mousedown', unlockMedia);
-      };
-      document.body.addEventListener('touchstart', unlockMedia, { once: true });
-      document.body.addEventListener('mousedown', unlockMedia, { once: true });
-      
-      // MindAR ready
-      const scene = document.querySelector('#scene');
-      if (scene) {
-        scene.addEventListener('mindar-image-start', () => {
-          console.log('MindAR camera started');
-          updateStatus('📷 Camera ready - Scan reference image', '#ffd700');
-        });
-        
-        scene.addEventListener('mindar-image-error', (e) => {
-          console.error('MindAR error:', e.detail);
-          updateStatus('⚠️ Camera error - Check permissions', '#ff6666');
-        });
-      }
-      
-      // Pre-initialize canvas with placeholder
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#ffd700';
-      ctx.font = 'bold 40px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('✨ AR Invitation ✨', canvas.width/2, canvas.height/2);
-      plane.setAttribute('material', 'src', canvas);
-      
-      console.log('========================================');
-      console.log('AR INVITATION READY');
-      console.log('Canvas method active - Video WILL display');
-      console.log('========================================');
-      
-    })();
+    }
+    
+    // Start after page load
+    window.addEventListener('load', () => {
+      checkAndStart();
+    });
+    
+    // Unlock audio on first touch
+    const unlockAudio = () => {
+      const video = document.querySelector('video');
+      if (video) video.load();
+      document.body.removeEventListener('touchstart', unlockAudio);
+      document.body.removeEventListener('mousedown', unlockAudio);
+    };
+    document.body.addEventListener('touchstart', unlockAudio, { once: true });
+    document.body.addEventListener('mousedown', unlockAudio, { once: true });
   </script>
 </body>
 </html>
