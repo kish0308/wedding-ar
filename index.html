@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <title>AR Test</title>
+  <title>AR Image Tracking</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -16,31 +16,67 @@
     body {
       margin: 0;
       overflow: hidden;
+      background: black;
+    }
+
+    /* Optional scanning UI */
+    #ui {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-family: Arial;
+      z-index: 999;
     }
   </style>
 </head>
 
 <body>
 
+<div id="ui">
+  Point camera at target image
+</div>
+
 <a-scene
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;"
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: yes; uiScanning: yes; uiError: yes;"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true"
   embedded
 >
 
-  <!-- CAMERA (IMPORTANT) -->
+  <!-- CAMERA -->
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <!-- AR TARGET -->
+  <!-- TARGET -->
   <a-entity mindar-image-target="targetIndex: 0">
 
-    <!-- SIMPLE TEST OBJECT -->
-    <a-box
+    <!-- 🔥 Visible test object -->
+    <a-plane
       position="0 0 0"
-      material="color: red; opacity: 0.8"
-      scale="0.3 0.3 0.3"
+      width="1"
+      height="1"
+      material="color: #FFD700; opacity: 0.9"
+    ></a-plane>
+
+    <!-- Floating 3D box -->
+    <a-box
+      position="0 0.5 0"
+      depth="0.3"
+      height="0.3"
+      width="0.3"
+      material="color: red;"
+      animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
     ></a-box>
+
+    <!-- Text label -->
+    <a-text
+      value="TARGET FOUND"
+      align="center"
+      position="0 1 0"
+      color="white"
+      scale="0.8 0.8 0.8"
+    ></a-text>
 
   </a-entity>
 
