@@ -17,16 +17,16 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      padding: 15px 25px;
+      padding: 16px 28px;
       font-size: 18px;
-      background: #000;
-      color: #fff;
+      background: black;
+      color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       z-index: 999;
     }
 
-    #hint {
+    #status {
       position: fixed;
       bottom: 20px;
       width: 100%;
@@ -40,9 +40,8 @@
 
 <body>
 
-<!-- Start Button (Fix for mobile autoplay + permissions) -->
-<button id="startButton">Tap to Start AR</button>
-<div id="hint">Point your camera at the invitation</div>
+<button id="startButton">Start AR</button>
+<div id="status">Tap to allow camera</div>
 
 <a-scene
   mindar-image="imageTargetSrc: targets.mind; autoStart: false;"
@@ -52,7 +51,6 @@
   device-orientation-permission-ui="enabled: true"
   renderer="colorManagement: true, physicallyCorrectLights"
 >
-
   <a-assets>
     <video 
       id="vid"
@@ -66,10 +64,8 @@
     </video>
   </a-assets>
 
-  <!-- Camera -->
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <!-- Image Target -->
   <a-entity mindar-image-target="targetIndex: 0">
     <a-video 
       src="#vid"
@@ -82,29 +78,54 @@
 </a-scene>
 
 <script>
-  const startButton = document.querySelector("#startButton");
+  const btn = document.getElementById("startButton");
+  const status = document.getElementById("status");
   const scene = document.querySelector("a-scene");
-  const video = document.querySelector("#vid");
+  const video = document.getElementById("vid");
 
-  // Start AR after user tap (fixes camera + autoplay issues)
-  startButton.addEventListener("click", async () => {
-    startButton.style.display = "none";
+  btn.addEventListener("click", async () => {
+    status.innerText = "Requesting camera...";
 
-    await scene.systems["mindar-image-system"].start();
+    // 🔥 FORCE CAMERA PERMISSION POPUP
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false
+      });
 
-    // Start video (muted autoplay allowed)
-    video.play().catch(() => {
-      console.log("Autoplay blocked, will play on target detection.");
-    });
+      // Stop temporary stream
+      stream.getTracks().forEach(track => track.stop());
+
+      status.innerText = "Starting AR...";
+
+      await scene.systems["mindar-image-system"].start();
+
+      btn.style.display = "none";
+      status.innerText = "Point camera at invitation";
+
+    } catch (err) {
+      console.error(err);
+
+      status.innerText = "❌ Camera blocked!";
+      alert(
+        "Camera access failed.\n\n" +
+        "Fix:\n" +
+        "1. Open in Chrome or Safari\n" +
+        "2. Allow camera permission\n" +
+        "3. Do NOT use Messenger/Facebook browser"
+      );
+    }
   });
 
-  // Play video when image is detected
+  // Play video when detected
   scene.addEventListener("targetFound", () => {
-    video.play();
+    status.innerText = "Playing invitation...";
+    video.play().catch(() => {});
   });
 
   // Pause when lost
   scene.addEventListener("targetLost", () => {
+    status.innerText = "Point camera at invitation";
     video.pause();
   });
 </script>
