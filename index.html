@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 
-  <title>AR Image Tracking</title>
+  <title>Wedding AR</title>
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -13,33 +14,50 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background: black;
     }
 
-    /* Optional scanning UI */
+    /* FIX: full screen AR scene */
+    a-scene {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Optional instruction overlay */
     #ui {
-      position: absolute;
+      position: fixed;
       top: 20px;
       width: 100%;
       text-align: center;
       color: white;
       font-family: Arial;
       z-index: 999;
+      pointer-events: none;
     }
   </style>
 </head>
 
 <body>
 
-<div id="ui">
-  Point camera at target image
-</div>
+<div id="ui">Point camera at target image</div>
 
 <a-scene
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: yes; uiScanning: yes; uiError: yes;"
+  mindar-image="
+    imageTargetSrc: ./targets.mind;
+    autoStart: true;
+    uiLoading: yes;
+    uiScanning: yes;
+    uiError: yes;
+  "
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true"
   embedded
@@ -48,32 +66,32 @@
   <!-- CAMERA -->
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <!-- TARGET -->
+  <!-- IMAGE TARGET -->
   <a-entity mindar-image-target="targetIndex: 0">
 
-    <!-- 🔥 Visible test object -->
+    <!-- Visible AR plane -->
     <a-plane
       position="0 0 0"
       width="1"
       height="1"
-      material="color: #FFD700; opacity: 0.9"
+      material="color: gold; opacity: 0.85"
     ></a-plane>
 
-    <!-- Floating 3D box -->
+    <!-- Floating object -->
     <a-box
-      position="0 0.5 0"
-      depth="0.3"
-      height="0.3"
+      position="0 0.4 0"
       width="0.3"
-      material="color: red;"
+      height="0.3"
+      depth="0.3"
+      material="color: red"
       animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
     ></a-box>
 
-    <!-- Text label -->
+    <!-- Text -->
     <a-text
-      value="TARGET FOUND"
+      value="TARGET DETECTED"
       align="center"
-      position="0 1 0"
+      position="0 0.9 0"
       color="white"
       scale="0.8 0.8 0.8"
     ></a-text>
@@ -81,6 +99,15 @@
   </a-entity>
 
 </a-scene>
+
+<!-- FIX: force proper resize for mobile UI alignment -->
+<script>
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 500);
+  });
+</script>
 
 </body>
 </html>
