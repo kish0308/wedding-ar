@@ -1,84 +1,555 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>MindAR Invitation</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-
-  <!-- A-Frame -->
+  <title>Wedding AR Invitation | Instant Video Popup</title>
+  
+  <!-- A-Frame + MindAR for WebAR Image Tracking -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-
-  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
+  
   <style>
-    body {
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
       overflow: hidden;
+      font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+    }
+    
+    /* UI overlay for instructions - clean & elegant */
+    .ar-overlay {
+      position: fixed;
+      bottom: 30px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      pointer-events: none;
+      z-index: 20;
+      transition: all 0.3s ease;
+    }
+    
+    .instruction-card {
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      border-radius: 50px;
+      padding: 12px 24px;
+      display: inline-block;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.2);
+      font-family: inherit;
+    }
+    
+    .instruction-card i {
+      font-style: normal;
+      display: inline-block;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+    
+    .status-badge {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 40px;
+      font-size: 11px;
+      color: #ffd966;
+      font-weight: 500;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+      z-index: 20;
+      pointer-events: none;
+      border: 1px solid rgba(255,217,102,0.3);
+    }
+    
+    .watermark {
+      position: fixed;
+      bottom: 15px;
+      left: 15px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      pointer-events: none;
+      z-index: 20;
+      font-family: monospace;
+    }
+    
+    @media (max-width: 640px) {
+      .instruction-card { font-size: 12px; padding: 8px 18px; }
+      .status-badge { top: 12px; right: 12px; font-size: 9px; }
+    }
+    
+    /* Hide A-Frame VR button and any intrusive UI */
+    .a-enter-vr, .a-orientation-modal {
+      display: none !important;
+    }
+    
+    /* Smooth video surface styling */
+    .video-surface {
+      border-radius: 16px !important;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,215,0,0.3) !important;
     }
   </style>
-
-  <script>
-    // 🎥 VIDEO CONTROL ON DETECTION
-    AFRAME.registerComponent("video-controller", {
-      init: function () {
-        this.video = document.querySelector("#invitation");
-        this.video.pause();
-      },
-
-      tick: function () {
-        if (this.el.getAttribute("visible")) {
-          if (this.video.paused) {
-            this.video.play();
-          }
-        } else {
-          this.video.pause();
-          this.video.currentTime = 0;
-        }
-      }
-    });
-  </script>
 </head>
-
 <body>
 
-<a-scene
-  mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true;"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
-  renderer="colorManagement: true, physicallyCorrectLights">
+  <div class="ar-overlay" id="arOverlay">
+    <div class="instruction-card" id="instructionText">
+      <i>🎯</i> SCAN THE TARGET IMAGE <i>✨</i>
+    </div>
+  </div>
+  <div class="status-badge" id="statusBadge">⚡ READY</div>
+  <div class="watermark">✨ AR INVITATION • WEDding</div>
 
-  <!-- LIGHT (important for visibility) -->
-  <a-light type="ambient" intensity="1"></a-light>
+  <!-- A-Frame Scene with MindAR Image Tracking -->
+  <a-scene
+    id="arScene"
+    mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.75; showDebug: false;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true;"
+    embedded>
+    
+    <!-- Lighting for realistic video plane -->
+    <a-light type="ambient" intensity="0.9" color="#ffffff"></a-light>
+    <a-light type="directional" intensity="1.3" position="1 2 1.5"></a-light>
+    <a-light type="directional" intensity="0.5" position="-1 1 -0.8"></a-light>
+    
+    <!-- Camera (must remain as is for MindAR tracking) -->
+    <a-camera id="arCamera" position="0 0 0" look-controls="enabled: false" camera="near: 0.1; far: 1000"></a-camera>
+    
+    <!-- Video Asset - Preload with correct attributes for instant playback on detection -->
+    <a-assets>
+      <video 
+        id="invitationVideo"
+        src="videos/invitation.mp4"
+        preload="auto"
+        playsinline
+        webkit-playsinline
+        x5-playsinline
+        muted="false"
+        loop="false"
+        crossorigin="anonymous">
+      </video>
+    </a-assets>
 
-  <!-- CAMERA (MUST be exactly like this) -->
-  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <!-- 
+      TARGET ENTITY (targetIndex: 0)
+      The video will pop up instantly when the reference image is detected.
+      Enhanced with video-controller component for seamless auto-play/pause.
+    -->
+    <a-entity 
+      mindar-image-target="targetIndex: 0" 
+      id="targetEntity"
+      video-controller>
+      
+      <!-- Main Video Plane - appears exactly on the tracked image -->
+      <a-plane
+        id="videoPlane"
+        position="0 0 0"
+        width="1.6"
+        height="1.0"
+        material="src: #invitationVideo; transparent: true; side: double; opacity: 1.0; shader: standard;"
+        color="#ffffff"
+        class="video-surface">
+      </a-plane>
+      
+      <!-- Elegant gold border frame effect -->
+      <a-plane
+        position="0 0 -0.003"
+        width="1.64"
+        height="1.04"
+        color="#ffd700"
+        material="opacity: 0.35; transparent: true; metalness: 0.9; roughness: 0.2"
+        side="double">
+      </a-plane>
+      
+      <!-- Decorative corner elements (wedding touch) -->
+      <a-entity position="-0.79 -0.49 0.02">
+        <a-sphere radius="0.025" color="#ffd966" material="metalness: 0.8"></a-sphere>
+      </a-entity>
+      <a-entity position="0.79 -0.49 0.02">
+        <a-sphere radius="0.025" color="#ffd966" material="metalness: 0.8"></a-sphere>
+      </a-entity>
+      <a-entity position="-0.79 0.49 0.02">
+        <a-sphere radius="0.025" color="#ffd966" material="metalness: 0.8"></a-sphere>
+      </a-entity>
+      <a-entity position="0.79 0.49 0.02">
+        <a-sphere radius="0.025" color="#ffd966" material="metalness: 0.8"></a-sphere>
+      </a-entity>
+      
+      <!-- Subtle shine line (top) -->
+      <a-box position="0 0.52 0.01" width="1.5" height="0.008" depth="0.005" color="#fff" material="opacity: 0.4; transparent: true"></a-box>
+      
+    </a-entity>
+  </a-scene>
 
-  <!-- ASSETS -->
-  <a-assets>
-    <video
-      id="invitation"
-      src="videos/invitation.mp4"
-      playsinline
-      webkit-playsinline
-      crossorigin="anonymous">
-    </video>
-  </a-assets>
-
-  <!-- TARGET -->
-  <a-entity mindar-image-target="targetIndex: 0" video-controller>
-
-    <a-plane
-      position="0 0 0"
-      width="1.6"
-      height="1"
-      material="src:#invitation; transparent:true">
-    </a-plane>
-
-  </a-entity>
-
-</a-scene>
-
+  <script>
+    (function() {
+      // ============================================================
+      // VIDEO CONTROLLER COMPONENT - INSTANT PLAY ON DETECTION
+      // Works exactly like wedding-ar reference: video pops up instantly
+      // when target image is scanned.
+      // ============================================================
+      AFRAME.registerComponent("video-controller", {
+        schema: {
+          autoReset: { default: true },   // reset video when target lost
+          playOnce: { default: false }    // if true, plays only first detection
+        },
+        
+        init: function() {
+          this.video = document.querySelector("#invitationVideo");
+          if (!this.video) {
+            console.error("[AR] Video element not found!");
+            return;
+          }
+          
+          // Video state management
+          this.isTargetVisible = false;
+          this.hasPlayed = false;
+          this.userInteracted = false;
+          
+          // Configure video
+          this.video.loop = false;
+          this.video.currentTime = 0;
+          this.video.pause();
+          
+          // Mobile autoplay unlock mechanism: pre-load and prime video on first user touch
+          this.primeVideoForAutoplay = this.primeVideoForAutoplay.bind(this);
+          
+          // Add gentle priming for mobile (ensures video plays instantly on detection)
+          const primeEvents = ['touchstart', 'mousedown'];
+          const primeHandler = () => {
+            if (!this.userInteracted && this.video) {
+              // Load metadata and prepare video without playing loudly
+              this.video.load();
+              // Attempt to play and immediately pause to unlock autoplay policies
+              const unlockPlay = this.video.play();
+              if (unlockPlay !== undefined) {
+                unlockPlay.then(() => {
+                  this.video.pause();
+                  this.video.currentTime = 0;
+                  this.userInteracted = true;
+                  console.log("[AR] Video primed for instant playback");
+                }).catch(e => {
+                  console.log("[AR] Prime warning, but will retry on detection:", e);
+                  this.userInteracted = true;
+                });
+              } else {
+                this.userInteracted = true;
+              }
+              // Remove listeners after first interaction
+              primeEvents.forEach(ev => window.removeEventListener(ev, primeHandler));
+            }
+          };
+          primeEvents.forEach(ev => window.addEventListener(ev, primeHandler, { once: false }));
+          
+          // Listen to MindAR target events
+          this.el.addEventListener("targetFound", () => {
+            console.log("[AR] 🎯 Target image detected! Video will pop up instantly.");
+            this.isTargetVisible = true;
+            this.playVideo();
+            // Update UI feedback
+            this.updateUI("✨ VIDEO INVITATION POPPING UP! ✨", "active");
+          });
+          
+          this.el.addEventListener("targetLost", () => {
+            console.log("[AR] Target lost, pausing video.");
+            this.isTargetVisible = false;
+            this.pauseVideo();
+            if (this.data.autoReset) {
+              this.video.currentTime = 0;
+            }
+            this.updateUI("🔍 Scan the target image again", "ready");
+          });
+          
+          // Also check visibility via tick for safety
+        },
+        
+        playVideo: function() {
+          if (!this.video) return;
+          
+          // Reset to beginning each time target appears (fresh invitation)
+          if (this.data.autoReset || this.video.ended) {
+            this.video.currentTime = 0;
+          }
+          
+          const playPromise = this.video.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log("[AR] ▶️ Video playing instantly on target!");
+              this.hasPlayed = true;
+              // Change badge style to indicate active playback
+              const badge = document.getElementById("statusBadge");
+              if (badge) {
+                badge.innerHTML = "🎬 VIDEO PLAYING";
+                badge.style.background = "rgba(255,215,0,0.85)";
+                badge.style.color = "#1a1a2e";
+              }
+              // Update overlay instruction with romantic hint
+              const instr = document.getElementById("instructionText");
+              if (instr) {
+                instr.innerHTML = "<i>💝</i> WATCH YOUR INVITATION <i>💝</i>";
+                instr.style.background = "rgba(255,215,0,0.85)";
+                instr.style.color = "#1a1a2e";
+                setTimeout(() => {
+                  if (instr && instr.innerHTML.includes("INVITATION")) {
+                    instr.style.background = "rgba(0,0,0,0.7)";
+                    instr.style.color = "white";
+                    instr.innerHTML = "<i>🎯</i> SCAN THE TARGET IMAGE <i>✨</i>";
+                  }
+                }, 4000);
+              }
+            }).catch(err => {
+              console.warn("[AR] Autoplay blocked, waiting for user tap on screen:", err);
+              this.showTapToPlayHint();
+              // Add one-time tap handler on document to resume
+              const resumeHandler = () => {
+                if (this.isTargetVisible && this.video && this.video.paused) {
+                  this.video.play().then(() => {
+                    console.log("[AR] Video started after user tap");
+                  }).catch(e => console.log(e));
+                }
+                document.body.removeEventListener('touchstart', resumeHandler);
+                document.body.removeEventListener('mousedown', resumeHandler);
+              };
+              document.body.addEventListener('touchstart', resumeHandler, { once: true });
+              document.body.addEventListener('mousedown', resumeHandler, { once: true });
+            });
+          }
+        },
+        
+        pauseVideo: function() {
+          if (this.video && !this.video.paused) {
+            this.video.pause();
+            console.log("[AR] ⏸️ Video paused");
+          }
+          const badge = document.getElementById("statusBadge");
+          if (badge && !this.isTargetVisible) {
+            badge.innerHTML = "⚡ SCAN AGAIN";
+            badge.style.background = "rgba(0,0,0,0.5)";
+            badge.style.color = "#ffd966";
+          }
+        },
+        
+        showTapToPlayHint: function() {
+          const overlay = document.getElementById("instructionText");
+          if (overlay && !this._hintShown) {
+            const originalText = overlay.innerHTML;
+            overlay.innerHTML = "👆 TAP SCREEN TO PLAY VIDEO 👆";
+            overlay.style.background = "rgba(0,0,0,0.85)";
+            overlay.style.color = "#ffd966";
+            setTimeout(() => {
+              if (overlay && overlay.innerHTML.includes("TAP SCREEN")) {
+                overlay.innerHTML = originalText;
+                overlay.style.background = "rgba(0,0,0,0.7)";
+                overlay.style.color = "white";
+              }
+            }, 2500);
+            this._hintShown = true;
+          }
+        },
+        
+        updateUI: function(message, state) {
+          const instructionDiv = document.getElementById("instructionText");
+          if (instructionDiv && !instructionDiv.innerHTML.includes("WATCH YOUR INVITATION")) {
+            if (state === "active") {
+              instructionDiv.innerHTML = `<i>🎬</i> ${message} <i>🎉</i>`;
+              instructionDiv.style.background = "rgba(255,215,0,0.85)";
+              instructionDiv.style.color = "#1a1a2e";
+              setTimeout(() => {
+                if (instructionDiv && instructionDiv.innerHTML.includes("POPPING")) {
+                  instructionDiv.style.background = "rgba(0,0,0,0.7)";
+                  instructionDiv.style.color = "white";
+                  instructionDiv.innerHTML = "<i>💫</i> INVITATION PLAYING <i>💫</i>";
+                  setTimeout(() => {
+                    if (instructionDiv && instructionDiv.innerHTML.includes("PLAYING")) {
+                      instructionDiv.innerHTML = "<i>🎯</i> SCAN THE TARGET IMAGE <i>✨</i>";
+                    }
+                  }, 3500);
+                }
+              }, 3000);
+            } else {
+              if (!instructionDiv.innerHTML.includes("SCAN THE TARGET")) {
+                instructionDiv.innerHTML = `<i>🔍</i> ${message} <i>✨</i>`;
+              }
+            }
+          }
+        },
+        
+        tick: function() {
+          // Sync visibility state from MindAR component if needed
+          if (this.el.components && this.el.components['mindar-image-target']) {
+            const tracked = this.el.components['mindar-image-target'].isVisible;
+            if (tracked !== this.isTargetVisible) {
+              this.isTargetVisible = tracked;
+              if (tracked) {
+                this.playVideo();
+              } else {
+                this.pauseVideo();
+                if (this.data.autoReset) this.video.currentTime = 0;
+              }
+            }
+          }
+        },
+        
+        remove: function() {
+          if (this.video) {
+            this.video.pause();
+          }
+        }
+      });
+      
+      // ============================================================
+      // ADDITIONAL ENHANCEMENTS: LOADING FEEDBACK & ERROR HANDLING
+      // ============================================================
+      const scene = document.querySelector('a-scene');
+      const hintOverlay = document.getElementById("instructionText");
+      const badge = document.getElementById("statusBadge");
+      
+      // Handle video loading errors gracefully
+      const videoEl = document.querySelector("#invitationVideo");
+      if (videoEl) {
+        videoEl.addEventListener('error', (e) => {
+          console.error("Video file missing or cannot load:", videoEl.error);
+          if (hintOverlay) {
+            hintOverlay.innerHTML = "⚠️ Video file missing: ensure 'videos/invitation.mp4' exists";
+            hintOverlay.style.background = "rgba(180,0,0,0.8)";
+          }
+          if (badge) {
+            badge.innerHTML = "⚠️ VIDEO ERROR";
+            badge.style.background = "rgba(180,0,0,0.7)";
+          }
+        });
+        
+        // When video ends, show replay hint (still on target)
+        videoEl.addEventListener('ended', () => {
+          console.log("[AR] Invitation video finished.");
+          if (hintOverlay && !hintOverlay.innerHTML.includes("SCAN")) {
+            hintOverlay.innerHTML = "🎉 INVITATION ENDED • RE-SCAN TO REPLAY 🎉";
+            hintOverlay.style.background = "rgba(0,0,0,0.8)";
+            setTimeout(() => {
+              if (hintOverlay && hintOverlay.innerHTML.includes("REPLAY")) {
+                hintOverlay.innerHTML = "<i>🎯</i> SCAN THE TARGET IMAGE <i>✨</i>";
+                hintOverlay.style.background = "rgba(0,0,0,0.7)";
+              }
+            }, 4000);
+          }
+          if (badge) {
+            badge.innerHTML = "🎬 REPLAY READY";
+            setTimeout(() => {
+              if (badge && badge.innerHTML === "🎬 REPLAY READY") badge.innerHTML = "⚡ SCAN AGAIN";
+            }, 2000);
+          }
+        });
+        
+        // Ensure playsinline works on all mobile browsers
+        videoEl.setAttribute('playsinline', '');
+        videoEl.setAttribute('webkit-playsinline', '');
+      }
+      
+      // MindAR system ready & camera permission handling
+      if (scene) {
+        scene.addEventListener('mindar-image-target-found', (ev) => {
+          console.log("MindAR: Target found event");
+        });
+        
+        scene.addEventListener('mindar-image-error', (err) => {
+          console.warn("MindAR error:", err.detail);
+          if (hintOverlay) {
+            hintOverlay.innerHTML = "⚠️ Camera access denied or marker file missing";
+            hintOverlay.style.background = "rgba(200,0,0,0.7)";
+          }
+        });
+        
+        // Check if camera started correctly after a delay
+        setTimeout(() => {
+          const arSystem = scene.systems['mindar-image-system'];
+          if (arSystem && !arSystem.started) {
+            if (hintOverlay) {
+              hintOverlay.innerHTML = "📷 Please allow camera access for AR invitation";
+              hintOverlay.style.background = "rgba(0,0,0,0.8)";
+            }
+          } else if (arSystem && arSystem.started) {
+            console.log("MindAR system ready - waiting for target detection");
+            if (badge) badge.innerHTML = "🔍 SCAN TARGET";
+          }
+        }, 1500);
+      }
+      
+      // Global tap to ensure audio/video context is activated (helps with mobile autoplay)
+      const activateAudioContext = () => {
+        if (videoEl && videoEl.muted === false) {
+          // just priming: load but not play aggressively
+          videoEl.load();
+        }
+        document.body.removeEventListener('touchstart', activateAudioContext);
+        document.body.removeEventListener('mousedown', activateAudioContext);
+      };
+      document.body.addEventListener('touchstart', activateAudioContext, { once: true });
+      document.body.addEventListener('mousedown', activateAudioContext, { once: true });
+      
+      // Add extra style for visual feedback when target is detected
+      const styleInject = document.createElement('style');
+      styleInject.textContent = `
+        .video-surface {
+          transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+          cursor: pointer;
+        }
+        .video-surface:hover {
+          transform: scale(1.01);
+        }
+        .a-loader-title {
+          display: none;
+        }
+      `;
+      document.head.appendChild(styleInject);
+      
+      // Small heartbeat animation on badge when target is near (optional cosmetic)
+      let heartbeatInterval = null;
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            const targetEntity = document.getElementById('targetEntity');
+            if (targetEntity && targetEntity.components && targetEntity.components['mindar-image-target']) {
+              const isVisible = targetEntity.components['mindar-image-target'].isVisible;
+              if (isVisible && badge) {
+                badge.style.animation = 'pulse 0.8s ease-in-out';
+                setTimeout(() => { if(badge) badge.style.animation = ''; }, 800);
+              }
+            }
+          }
+        });
+      });
+      
+      // Start observing scene for tracking changes (optional)
+      setTimeout(() => {
+        const targetEnt = document.getElementById('targetEntity');
+        if (targetEnt) {
+          observer.observe(targetEnt, { attributes: true });
+        }
+      }, 1000);
+      
+      console.log("🚀 WebAR Invitation Ready — Scan your reference image and the video will pop up instantly!");
+    })();
+  </script>
 </body>
 </html>
