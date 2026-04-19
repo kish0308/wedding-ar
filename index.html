@@ -1,116 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AR Image Tracking Fixed</title>
+  <title>MindAR Invitation</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
-  <!-- MindAR -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+  <!-- MindAR A-Frame -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      background: black;
-      font-family: Arial;
-    }
-
-    #ui {
-      position: absolute;
-      top: 20px;
-      width: 100%;
-      text-align: center;
-      color: white;
-      z-index: 10;
-    }
-
-    #startBtn {
-      position: absolute;
-      bottom: 25px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 20px;
-      font-size: 16px;
-      background: white;
-      border: none;
-      border-radius: 8px;
-      z-index: 999;
     }
   </style>
+
+  <script>
+    AFRAME.registerComponent("video-controller", {
+      init: function () {
+        this.video = document.querySelector("#video");
+        this.video.pause();
+      },
+
+      tick: function () {
+        const marker = this.el;
+
+        if (marker.getAttribute("visible")) {
+          if (this.video.paused) {
+            this.video.play();
+          }
+        } else {
+          this.video.pause();
+          this.video.currentTime = 0;
+        }
+      }
+    });
+  </script>
 </head>
 
 <body>
 
-<div id="ui">
-  Point camera at target image
-</div>
-
-<button id="startBtn">Start AR Camera</button>
-
+<!-- IMPORTANT: MindAR Scene -->
 <a-scene
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: yes; uiScanning: yes; uiError: yes;"
+  mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true;"
   vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: true"
-  embedded
->
+  device-orientation-permission-ui="enabled: false"
+  renderer="colorManagement: true, physicallyCorrectLights">
+
+  <!-- Assets -->
+  <a-assets>
+    <video
+      id="video"
+      src="videos/invitation.mp4"
+      loop="false"
+      playsinline
+      webkit-playsinline
+      crossorigin="anonymous">
+    </video>
+  </a-assets>
+
+  <!-- LIGHT (important for visibility) -->
+  <a-light type="ambient" intensity="1"></a-light>
 
   <!-- CAMERA -->
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <!-- TARGET -->
-  <a-entity mindar-image-target="targetIndex: 0">
-
-    <!-- Background plane -->
+  <!-- TARGET 1 -->
+  <a-entity mindar-image-target="targetIndex: 0" video-controller>
     <a-plane
       position="0 0 0"
       width="1"
-      height="1"
-      material="color: #FFD700; opacity: 0.9"
-    ></a-plane>
-
-    <!-- Rotating cube -->
-    <a-box
-      position="0 0.5 0"
-      depth="0.3"
-      height="0.3"
-      width="0.3"
-      material="color: red;"
-      animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"
-    ></a-box>
-
-    <!-- Text -->
-    <a-text
-      value="TARGET DETECTED"
-      align="center"
-      position="0 1 0"
-      color="white"
-      scale="0.8 0.8 0.8"
-    ></a-text>
-
+      height="0.6"
+      rotation="0 0 0"
+      material="src:#video; transparent:true">
+    </a-plane>
   </a-entity>
 
 </a-scene>
-
-<!-- START AR SCRIPT -->
-<script>
-  const startBtn = document.getElementById("startBtn");
-
-  startBtn.addEventListener("click", () => {
-    const sceneEl = document.querySelector("a-scene");
-
-    if (sceneEl.systems && sceneEl.systems["mindar-image-system"]) {
-      sceneEl.systems["mindar-image-system"].start();
-      startBtn.style.display = "none";
-      document.getElementById("ui").innerText = "Camera Active - Point at Target";
-    } else {
-      alert("AR system not ready yet. Refresh page.");
-    }
-  });
-</script>
 
 </body>
 </html>
