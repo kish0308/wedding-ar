@@ -3,36 +3,22 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-
-  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; font-family: Arial; }
+    body { margin: 0; overflow: hidden; }
 
-    #startButton {
+    #startBtn {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      padding: 16px 28px;
+      padding: 15px 25px;
       font-size: 18px;
       background: black;
       color: white;
-      border: none;
-      border-radius: 12px;
-      z-index: 999;
-    }
-
-    #status {
-      position: fixed;
-      bottom: 20px;
-      width: 100%;
-      text-align: center;
-      color: white;
-      font-size: 14px;
+      border-radius: 10px;
       z-index: 999;
     }
   </style>
@@ -40,92 +26,50 @@
 
 <body>
 
-<button id="startButton">Start AR</button>
-<div id="status">Tap to allow camera</div>
+<button id="startBtn">Start AR</button>
 
 <a-scene
   mindar-image="imageTargetSrc: targets.mind; autoStart: false;"
   embedded
-  color-space="sRGB"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true"
-  renderer="colorManagement: true, physicallyCorrectLights"
 >
   <a-assets>
-    <video 
-      id="vid"
-      src="video.mp4"
-      preload="auto"
-      muted
-      playsinline
-      webkit-playsinline
-      loop
-      crossorigin="anonymous">
-    </video>
+    <video id="vid" src="video.mp4" muted playsinline loop></video>
   </a-assets>
 
   <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
   <a-entity mindar-image-target="targetIndex: 0">
-    <a-video 
-      src="#vid"
-      width="1"
-      height="0.6"
-      position="0 0 0">
-    </a-video>
+    <a-video src="#vid" width="1" height="0.6"></a-video>
   </a-entity>
 
 </a-scene>
 
 <script>
-  const btn = document.getElementById("startButton");
-  const status = document.getElementById("status");
+  const btn = document.querySelector("#startBtn");
   const scene = document.querySelector("a-scene");
-  const video = document.getElementById("vid");
+  const video = document.querySelector("#vid");
 
   btn.addEventListener("click", async () => {
-    status.innerText = "Requesting camera...";
+    btn.style.display = "none";
 
-    // 🔥 FORCE CAMERA PERMISSION POPUP
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false
-      });
-
-      // Stop temporary stream
-      stream.getTracks().forEach(track => track.stop());
-
-      status.innerText = "Starting AR...";
-
-      await scene.systems["mindar-image-system"].start();
-
-      btn.style.display = "none";
-      status.innerText = "Point camera at invitation";
-
-    } catch (err) {
-      console.error(err);
-
-      status.innerText = "❌ Camera blocked!";
-      alert(
-        "Camera access failed.\n\n" +
-        "Fix:\n" +
-        "1. Open in Chrome or Safari\n" +
-        "2. Allow camera permission\n" +
-        "3. Do NOT use Messenger/Facebook browser"
-      );
-    }
+    // Wait until scene is ready
+    scene.addEventListener("renderstart", async () => {
+      try {
+        await scene.systems["mindar-image-system"].start();
+      } catch (e) {
+        alert("Failed to start AR. Try Chrome or Safari.");
+        console.error(e);
+      }
+    }, { once: true });
   });
 
-  // Play video when detected
   scene.addEventListener("targetFound", () => {
-    status.innerText = "Playing invitation...";
-    video.play().catch(() => {});
+    video.play();
   });
 
-  // Pause when lost
   scene.addEventListener("targetLost", () => {
-    status.innerText = "Point camera at invitation";
     video.pause();
   });
 </script>
