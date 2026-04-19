@@ -9,12 +9,12 @@
   <style>
     body { margin: 0; overflow: hidden; }
 
-    #startBtn {
+    #btn {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      padding: 15px 25px;
+      padding: 14px 24px;
       font-size: 18px;
       background: black;
       color: white;
@@ -26,14 +26,15 @@
 
 <body>
 
-<button id="startBtn">Start AR</button>
+<button id="btn">Start AR</button>
 
 <a-scene
-  mindar-image="imageTargetSrc: targets.mind; autoStart: false;"
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;"
   embedded
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: true"
 >
+
   <a-assets>
     <video id="vid" src="video.mp4" muted playsinline loop></video>
   </a-assets>
@@ -47,31 +48,23 @@
 </a-scene>
 
 <script>
-  const btn = document.querySelector("#startBtn");
+  const btn = document.getElementById("btn");
   const scene = document.querySelector("a-scene");
-  const video = document.querySelector("#vid");
+  const video = document.getElementById("vid");
 
   btn.addEventListener("click", async () => {
     btn.style.display = "none";
 
-    // Wait until scene is ready
-    scene.addEventListener("renderstart", async () => {
-      try {
-        await scene.systems["mindar-image-system"].start();
-      } catch (e) {
-        alert("Failed to start AR. Try Chrome or Safari.");
-        console.error(e);
-      }
-    }, { once: true });
+    try {
+      await scene.systems["mindar-image-system"].start();
+    } catch (e) {
+      alert("AR failed to start. Check targets.mind file.");
+      console.error(e);
+    }
   });
 
-  scene.addEventListener("targetFound", () => {
-    video.play();
-  });
-
-  scene.addEventListener("targetLost", () => {
-    video.pause();
-  });
+  scene.addEventListener("targetFound", () => video.play());
+  scene.addEventListener("targetLost", () => video.pause());
 </script>
 
 </body>
