@@ -3,13 +3,13 @@
 <head>
   <title>MindAR Invitation</title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
 
   <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 
-  <!-- MindAR A-Frame -->
+  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
@@ -20,16 +20,15 @@
   </style>
 
   <script>
+    // 🎥 VIDEO CONTROL ON DETECTION
     AFRAME.registerComponent("video-controller", {
       init: function () {
-        this.video = document.querySelector("#video");
+        this.video = document.querySelector("#invitation");
         this.video.pause();
       },
 
       tick: function () {
-        const marker = this.el;
-
-        if (marker.getAttribute("visible")) {
+        if (this.el.getAttribute("visible")) {
           if (this.video.paused) {
             this.video.play();
           }
@@ -44,40 +43,39 @@
 
 <body>
 
-<!-- IMPORTANT: MindAR Scene -->
 <a-scene
   mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true;"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
   renderer="colorManagement: true, physicallyCorrectLights">
 
-  <!-- Assets -->
+  <!-- LIGHT (important for visibility) -->
+  <a-light type="ambient" intensity="1"></a-light>
+
+  <!-- CAMERA (MUST be exactly like this) -->
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+  <!-- ASSETS -->
   <a-assets>
     <video
-      id="video"
+      id="invitation"
       src="videos/invitation.mp4"
-      loop="false"
       playsinline
       webkit-playsinline
       crossorigin="anonymous">
     </video>
   </a-assets>
 
-  <!-- LIGHT (important for visibility) -->
-  <a-light type="ambient" intensity="1"></a-light>
-
-  <!-- CAMERA -->
-  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-  <!-- TARGET 1 -->
+  <!-- TARGET -->
   <a-entity mindar-image-target="targetIndex: 0" video-controller>
+
     <a-plane
       position="0 0 0"
-      width="1"
-      height="0.6"
-      rotation="0 0 0"
-      material="src:#video; transparent:true">
+      width="1.6"
+      height="1"
+      material="src:#invitation; transparent:true">
     </a-plane>
+
   </a-entity>
 
 </a-scene>
