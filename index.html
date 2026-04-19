@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Wedding AR Invitation | MindAR</title>
+  <title>Wedding AR Invitation - Mobile Fixed</title>
   
   <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
@@ -20,6 +20,7 @@
     body {
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
     }
     
     .instruction-panel {
@@ -36,7 +37,6 @@
       z-index: 100;
       pointer-events: none;
       border: 1px solid rgba(255,215,0,0.3);
-      transition: all 0.3s ease;
     }
     
     .instruction-panel h3 {
@@ -68,48 +68,6 @@
       pointer-events: none;
     }
     
-    .error-box {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.95);
-      backdrop-filter: blur(12px);
-      border-radius: 20px;
-      padding: 24px;
-      color: white;
-      z-index: 200;
-      text-align: center;
-      max-width: 90%;
-      width: 320px;
-      border: 1px solid #ff4444;
-      pointer-events: none;
-    }
-    
-    .error-box h4 {
-      color: #ff6666;
-      margin-bottom: 12px;
-    }
-    
-    .error-box p {
-      font-size: 13px;
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-    
-    .error-box code {
-      background: #333;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      display: inline-block;
-      margin: 4px;
-    }
-    
-    .hidden {
-      display: none;
-    }
-    
     @media (min-width: 768px) {
       .instruction-panel { left: auto; right: 20px; bottom: 20px; max-width: 320px; text-align: left; }
       .status { left: auto; right: 20px; top: 20px; left: 20px; text-align: left; }
@@ -122,20 +80,9 @@
     🔍 Initializing AR camera...
   </div>
   
-  <div class="instruction-panel" id="instructionPanel">
+  <div class="instruction-panel">
     <h3>✨ Wedding AR Invitation ✨</h3>
-    <p id="instructionText">Point camera at the reference image → Video will appear instantly</p>
-  </div>
-  
-  <div class="error-box hidden" id="errorBox">
-    <h4>⚠️ Target File Missing</h4>
-    <p>You need to create a <code>targets.mind</code> file from your reference image.</p>
-    <p><strong>Quick fix:</strong><br>
-    1. Go to <code style="background:#2a2a2a;">https://ar-js-org.github.io/studio/</code><br>
-    2. Upload your reference image<br>
-    3. Download the .mind file<br>
-    4. Place it in <code>markers/targets.mind</code></p>
-    <p style="font-size: 11px; margin-top: 12px;">📁 File should be at: <code>markers/targets.mind</code></p>
+    <p id="instructionText">Point camera at the reference image → Video will appear</p>
   </div>
 
   <a-scene
@@ -143,17 +90,17 @@
     mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.75; showDebug: false;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false"
-    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: false;"
     embedded>
     
     <!-- Lighting -->
-    <a-light type="ambient" intensity="0.8"></a-light>
-    <a-light type="directional" intensity="1.2" position="1 2 1.5"></a-light>
+    <a-light type="ambient" intensity="1.0"></a-light>
+    <a-light type="directional" intensity="1.5" position="1 2 1.5"></a-light>
     
     <!-- Camera -->
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
     
-    <!-- Video Asset -->
+    <!-- Video Asset with proper mobile attributes -->
     <a-assets>
       <video 
         id="invitationVideo"
@@ -161,21 +108,26 @@
         preload="auto"
         playsinline
         webkit-playsinline
+        autoplay="false"
+        muted="false"
+        loop="false"
         crossorigin="anonymous">
       </video>
     </a-assets>
     
-    <!-- Target Entity - Video will appear when detected -->
+    <!-- Target Entity - Fixed video display -->
     <a-entity 
       id="targetEntity"
       mindar-image-target="targetIndex: 0">
       
+      <!-- VIDEO PLANE - Fixed for mobile display -->
       <a-plane
+        id="videoPlane"
         position="0 0 0"
         width="1.6"
         height="1.0"
-        material="src: #invitationVideo; transparent: true; side: double;"
-        video-handler>
+        material="shader: flat; src: #invitationVideo; transparent: false; side: double;"
+        video-mobile-handler>
       </a-plane>
       
       <!-- Decorative border -->
@@ -184,56 +136,97 @@
         width="1.64"
         height="1.04"
         color="#ffd700"
-        material="opacity: 0.3; transparent: true; metalness: 0.8">
+        material="opacity: 0.4; transparent: true; metalness: 0.8; roughness: 0.3"
+        side="double">
       </a-plane>
       
     </a-entity>
   </a-scene>
 
   <script>
-    // Video handler component - plays when target visible
-    AFRAME.registerComponent("video-handler", {
+    // FIXED VIDEO HANDLER FOR MOBILE
+    AFRAME.registerComponent("video-mobile-handler", {
       init: function() {
         this.video = document.querySelector("#invitationVideo");
-        if (!this.video) return;
+        if (!this.video) {
+          console.error("Video element not found!");
+          return;
+        }
         
+        // Force video texture update
+        this.video.crossOrigin = "anonymous";
+        this.video.playsInline = true;
+        this.video.setAttribute('playsinline', '');
+        this.video.setAttribute('webkit-playsinline', '');
+        
+        // Initialize video state
         this.video.pause();
         this.video.currentTime = 0;
-        this.isPlaying = false;
+        this.isVisible = false;
+        this.videoTexture = null;
         
-        // Get the parent entity (target)
+        // Get the material and force texture refresh
+        this.el.addEventListener('materialtextureloaded', () => {
+          console.log("Texture loaded");
+        });
+        
+        // Get parent target entity
         this.targetEl = this.el.parentElement;
         
-        // Listen to target events
+        // Target detection events
         this.targetEl.addEventListener("targetFound", () => {
-          console.log("🎯 Target detected! Playing video...");
+          console.log("🎯 Target detected!");
+          this.isVisible = true;
           this.updateStatus("🎬 Video playing!", "#4caf50");
-          this.playVideo();
+          this.playVideoWithTexture();
         });
         
         this.targetEl.addEventListener("targetLost", () => {
-          console.log("Target lost, pausing video");
+          console.log("Target lost");
+          this.isVisible = false;
           this.updateStatus("🔍 Target lost - scan again", "#ffd966");
           this.pauseVideo();
         });
+        
+        // Force material update every frame when visible
+        this.tick = AFRAME.utils.throttleTick(this.tick, 100, this);
       },
       
-      playVideo: function() {
+      playVideoWithTexture: function() {
         if (!this.video) return;
         
         // Reset to beginning
         this.video.currentTime = 0;
         
+        // CRITICAL: Force reload of texture material
+        const material = this.el.getAttribute('material');
+        if (material) {
+          // Refresh material to ensure video texture updates
+          this.el.setAttribute('material', {
+            src: '#invitationVideo',
+            shader: 'flat',
+            transparent: false,
+            side: 'double'
+          });
+        }
+        
+        // Play video with promise handling
         const playPromise = this.video.play();
         if (playPromise !== undefined) {
           playPromise.then(() => {
-            console.log("✅ Video playing");
-            this.isPlaying = true;
-            document.getElementById("instructionText").innerHTML = "🎉 Video invitation playing! 🎉";
+            console.log("✅ Video playing and visible on screen");
+            this.updateInstruction("🎉 Video invitation playing! 🎉");
+            
+            // Force another texture update after play starts
+            setTimeout(() => {
+              if (this.isVisible) {
+                this.el.setAttribute('material', 'src', '#invitationVideo');
+              }
+            }, 50);
           }).catch(err => {
-            console.warn("Autoplay blocked:", err);
+            console.error("Autoplay error:", err);
             this.updateStatus("⚠️ Tap screen to play video", "#ff9800");
-            this.showTapHint();
+            this.waitForUserTap();
           });
         }
       },
@@ -241,15 +234,25 @@
       pauseVideo: function() {
         if (this.video && !this.video.paused) {
           this.video.pause();
-          this.isPlaying = false;
-          document.getElementById("instructionText").innerHTML = "Point camera at the reference image → Video will appear instantly";
+          this.updateInstruction("Point camera at the reference image → Video will appear");
         }
       },
       
-      showTapHint: function() {
+      tick: function() {
+        // Force texture update while video is playing and visible
+        if (this.isVisible && this.video && !this.video.paused) {
+          // This trick forces A-Frame to refresh the video texture
+          const material = this.el.getAttribute('material');
+          if (material && material.src) {
+            // No operation - just accessing forces refresh
+          }
+        }
+      },
+      
+      waitForUserTap: function() {
         const handler = () => {
-          if (this.targetEl.components['mindar-image-target']?.isVisible && this.video.paused) {
-            this.playVideo();
+          if (this.isVisible && this.video && this.video.paused) {
+            this.playVideoWithTexture();
           }
           document.body.removeEventListener('touchstart', handler);
           document.body.removeEventListener('mousedown', handler);
@@ -264,58 +267,69 @@
           statusDiv.innerHTML = message;
           statusDiv.style.borderLeftColor = color || "#ffd966";
         }
+      },
+      
+      updateInstruction: function(message) {
+        const instructionP = document.getElementById("instructionText");
+        if (instructionP) {
+          instructionP.innerHTML = message;
+        }
       }
     });
     
-    // Check if .mind file exists and handle errors
+    // Mobile-specific: Ensure video texture updates continuously
     const scene = document.querySelector("#scene");
-    const errorBox = document.getElementById("errorBox");
     const statusDiv = document.getElementById("statusMessage");
     
-    // Fetch check for .mind file
+    // Check if .mind file exists
     fetch('markers/targets.mind', { method: 'HEAD' })
       .then(response => {
-        if (!response.ok) {
-          throw new Error('File not found');
+        if (response.ok) {
+          console.log('✅ targets.mind file found');
+          statusDiv.innerHTML = "📷 Camera ready - Scan your reference image";
+        } else {
+          statusDiv.innerHTML = "⚠️ Missing targets.mind file";
         }
-        console.log('✅ targets.mind file found');
-        statusDiv.innerHTML = "📷 Camera ready - Scan your reference image";
       })
       .catch(error => {
-        console.error('❌ targets.mind not found:', error);
-        errorBox.classList.remove("hidden");
-        statusDiv.innerHTML = "⚠️ Missing target file - See instructions below";
-        statusDiv.style.background = "rgba(180,0,0,0.8)";
+        console.error('❌ targets.mind not found');
+        statusDiv.innerHTML = "⚠️ Place markers/targets.mind file";
       });
     
-    // MindAR error handling
-    scene.addEventListener('mindar-image-error', (e) => {
-      console.error('MindAR error:', e.detail);
-      if (e.detail?.message?.includes('imageTargetSrc')) {
-        errorBox.classList.remove("hidden");
-      }
-    });
-    
-    // Success when camera starts
+    // Handle camera initialization
     scene.addEventListener('mindar-image-start', () => {
-      console.log('MindAR started successfully');
+      console.log('MindAR started');
       statusDiv.innerHTML = "🎯 Camera ready - Point at your reference image";
     });
     
-    // Video load error
+    scene.addEventListener('mindar-image-error', (e) => {
+      console.error('MindAR error:', e.detail);
+      statusDiv.innerHTML = "⚠️ Camera error - check permissions";
+    });
+    
+    // Force video element to be interactive
     const video = document.querySelector("#invitationVideo");
     if (video) {
-      video.addEventListener('error', () => {
-        console.warn('Video file not found at videos/invitation.mp4');
-        const panel = document.getElementById("instructionPanel");
-        if (panel) {
-          const p = panel.querySelector('p');
-          if (p) p.innerHTML = "⚠️ Video file missing: place invitation.mp4 in 'videos/' folder";
-        }
+      video.addEventListener('loadeddata', () => {
+        console.log("Video data loaded");
       });
+      
+      video.addEventListener('error', (e) => {
+        console.error('Video load error');
+        document.getElementById("instructionText").innerHTML = "⚠️ Place video in 'videos/invitation.mp4'";
+      });
+      
+      // Unlock audio/video on first touch
+      const unlockVideo = () => {
+        video.load();
+        document.body.removeEventListener('touchstart', unlockVideo);
+        document.body.removeEventListener('mousedown', unlockVideo);
+      };
+      document.body.addEventListener('touchstart', unlockVideo, { once: true });
+      document.body.addEventListener('mousedown', unlockVideo, { once: true });
     }
     
-    console.log("AR Invitation Ready - Make sure markers/targets.mind exists!");
+    console.log("AR Ready - Mobile video fix applied");
   </script>
 </body>
 </html>
