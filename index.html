@@ -1,164 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Wedding AR Invitation</title>
-
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
-<style>
-body { margin:0; overflow:hidden; font-family:sans-serif; }
-#ui {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  background: rgba(0,0,0,0.7);
-  color: #ffd700;
-  padding: 12px;
-  border-radius: 12px;
-  text-align: center;
-  z-index: 10;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Wedding AR Invitation – Animated GIF</title>
+  
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <!-- MindAR for image tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- aframe-gif-shader to play GIFs as textures -->
+  <script src="https://rawgit.com/mayognaise/aframe-gif-shader/master/dist/aframe-gif-shader.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: #000;
+    }
+    /* UI overlays */
+    .status-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 16px;
+      color: white;
+      text-align: center;
+      z-index: 100;
+      pointer-events: none;
+      border-left: 4px solid #ffd966;
+    }
+    .status-panel h3 {
+      color: #ffd966;
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+    .instruction {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 10px 16px;
+      color: #ffd966;
+      font-size: 13px;
+      text-align: center;
+      z-index: 100;
+      pointer-events: none;
+    }
+    @media (min-width: 768px) {
+      .status-panel { left: auto; right: 20px; bottom: 20px; max-width: 340px; text-align: left; }
+      .instruction { left: auto; right: 20px; top: 20px; left: 20px; text-align: left; max-width: 400px; }
+    }
+  </style>
 </head>
-
 <body>
 
-<div id="ui">📷 Point camera at the invitation</div>
+  <div class="instruction" id="instructionMsg">
+    🔍 Point camera at the reference image
+  </div>
+  <div class="status-panel" id="statusPanel">
+    <h3>✨ Wedding AR Invitation ✨</h3>
+    <div id="statusText">Initializing camera...</div>
+  </div>
 
-<a-scene
-mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.5;"
-renderer="colorManagement: true; physicallyCorrectLights: true;"
-vr-mode-ui="enabled:false"
-device-orientation-permission-ui="enabled:false"
-embedded>
+  <a-scene
+    id="scene"
+    mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.7; showDebug: false;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    renderer="colorManagement: true; physicallyCorrectLights: true;"
+    embedded>
+    
+    <!-- Lighting -->
+    <a-light type="ambient" intensity="1.0"></a-light>
+    <a-light type="directional" intensity="1.2" position="1 2 1.5"></a-light>
+    
+    <!-- Camera (required by MindAR) -->
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    
+    <!-- Target entity: the image to track -->
+    <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
+      
+      <!-- GIF plane – will be shown/hidden by the controller -->
+      <a-plane
+        id="gifPlane"
+        position="0 0 0"
+        width="1.6"
+        height="1.0"
+        material="shader: gif; src: url(videos/invitation.gif); transparent: true; opacity: 1;"
+        visible="false">
+      </a-plane>
+      
+      <!-- Elegant gold frame (always visible when target found) -->
+      <a-plane
+        id="framePlane"
+        position="0 0 -0.003"
+        width="1.64"
+        height="1.04"
+        color="#ffd700"
+        material="opacity: 0.4; transparent: true; metalness: 0.8; roughness: 0.3"
+        visible="false">
+      </a-plane>
+      
+      <!-- Corner decorations -->
+      <a-sphere id="cornerTL" position="-0.78 -0.48 0.01" radius="0.02" color="#ffd700" visible="false"></a-sphere>
+      <a-sphere id="cornerTR" position="0.78 -0.48 0.01" radius="0.02" color="#ffd700" visible="false"></a-sphere>
+      <a-sphere id="cornerBL" position="-0.78 0.48 0.01" radius="0.02" color="#ffd700" visible="false"></a-sphere>
+      <a-sphere id="cornerBR" position="0.78 0.48 0.01" radius="0.02" color="#ffd700" visible="false"></a-sphere>
+      
+    </a-entity>
+  </a-scene>
 
-<a-assets>
-<video
-  id="vid"
-  src="videos/invitation.mp4"
-  preload="auto"
-  autoplay
-  loop
-  muted
-  playsinline
-  webkit-playsinline
-  crossorigin="anonymous"
-  style="display:none">
-</video>
-</a-assets>
-
-<a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-
-<a-entity mindar-image-target="targetIndex:0" id="target">
-
-<a-plane
-  id="videoPlane"
-  position="0 0 0"
-  width="1"
-  height="0.6"
-  material="shader: flat; src: #vid;">
-</a-plane>
-
-<!-- glow frame -->
-<a-plane
-  position="0 0 -0.01"
-  width="1.05"
-  height="0.65"
-  color="#ffd700"
-  material="opacity:0.25; transparent:true">
-</a-plane>
-
-</a-entity>
-
-</a-scene>
-
-<script>
-const video = document.querySelector("#vid");
-const plane = document.querySelector("#videoPlane");
-const target = document.querySelector("#target");
-const ui = document.getElementById("ui");
-
-// =======================
-// FORCE TEXTURE FIX
-// =======================
-function forceTexture() {
-  plane.setAttribute("material", "src", "#vid");
-}
-
-// =======================
-// AUTO RATIO FIX
-// =======================
-video.addEventListener("loadedmetadata", () => {
-  const ratio = video.videoWidth / video.videoHeight;
-  plane.setAttribute("width", 1);
-  plane.setAttribute("height", 1 / ratio);
-});
-
-// =======================
-// TARGET EVENTS
-// =======================
-target.addEventListener("targetFound", async () => {
-  console.log("TARGET FOUND");
-
-  ui.innerHTML = "💖 Tap screen for sound";
-
-  try {
-    video.currentTime = 0;
-    await video.play();
-
-    // force render fix
-    forceTexture();
-    setTimeout(forceTexture, 100);
-    setTimeout(forceTexture, 300);
-
-  } catch (e) {
-    console.log("Autoplay blocked");
-
-    document.body.addEventListener("click", () => {
-      video.play();
-      forceTexture();
-    }, { once: true });
-  }
-});
-
-target.addEventListener("targetLost", () => {
-  video.pause();
-  ui.innerHTML = "📷 Scan invitation again";
-});
-
-// =======================
-// TAP TO ENABLE SOUND
-// =======================
-document.body.addEventListener("click", () => {
-  if (video.paused === false) {
-    video.muted = false;
-    video.play();
-    ui.innerHTML = "✨ Enjoy your invitation ✨";
-  }
-});
-
-// =======================
-// DEBUG CHECKS
-// =======================
-video.addEventListener("error", () => {
-  ui.innerHTML = "❌ Video not found (check /videos folder)";
-});
-
-fetch("markers/targets.mind")
-.then(r => {
-  if (!r.ok) {
-    ui.innerHTML = "❌ targets.mind missing";
-  }
-})
-.catch(() => {
-  ui.innerHTML = "❌ cannot load targets.mind";
-});
-
-</script>
-
+  <script>
+    // ============================================================
+    // GIF CONTROLLER – plays GIF when target is found, hides when lost
+    // ============================================================
+    AFRAME.registerComponent("gif-controller", {
+      init: function() {
+        this.targetEntity = this.el;
+        this.gifPlane = document.querySelector("#gifPlane");
+        this.framePlane = document.querySelector("#framePlane");
+        this.corners = [
+          document.querySelector("#cornerTL"),
+          document.querySelector("#cornerTR"),
+          document.querySelector("#cornerBL"),
+          document.querySelector("#cornerBR")
+        ];
+        
+        if (!this.gifPlane) {
+          console.error("GIF plane not found!");
+          return;
+        }
+        
+        // Store original material to force reset later
+        this.originalMaterial = this.gifPlane.getAttribute("material");
+        
+        // Target events
+        this.targetEntity.addEventListener("targetFound", () => {
+          console.log("🎯 Target detected – showing GIF");
+          this.showGIF();
+          this.updateUI("🎬 GIF playing!", "#4caf50", "✨ Watch your invitation! ✨");
+        });
+        
+        this.targetEntity.addEventListener("targetLost", () => {
+          console.log("Target lost – hiding GIF");
+          this.hideGIF();
+          this.updateUI("🔍 Scan reference image again", "#ffd966", "🔍 Point camera at the reference image");
+        });
+      },
+      
+      showGIF: function() {
+        // Make GIF plane and decorations visible
+        this.gifPlane.setAttribute("visible", "true");
+        this.framePlane.setAttribute("visible", "true");
+        this.corners.forEach(corner => {
+          if (corner) corner.setAttribute("visible", "true");
+        });
+        
+        // Force GIF to restart by reapplying the material (resets animation)
+        const currentSrc = this.gifPlane.getAttribute("material").src;
+        this.gifPlane.setAttribute("material", {
+          shader: "gif",
+          src: currentSrc,
+          transparent: true,
+          opacity: 1
+        });
+      },
+      
+      hideGIF: function() {
+        this.gifPlane.setAttribute("visible", "false");
+        this.framePlane.setAttribute("visible", "false");
+        this.corners.forEach(corner => {
+          if (corner) corner.setAttribute("visible", "false");
+        });
+      },
+      
+      updateUI: function(statusMsg, color, instructionMsg) {
+        const statusDiv = document.getElementById("statusText");
+        const instrDiv = document.getElementById("instructionMsg");
+        if (statusDiv) {
+          statusDiv.innerHTML = statusMsg;
+          statusDiv.parentElement.style.borderLeftColor = color;
+        }
+        if (instrDiv && instructionMsg) instrDiv.innerHTML = instructionMsg;
+      }
+    });
+    
+    // Attach controller to target entity
+    const targetEntity = document.querySelector("#targetEntity");
+    if (targetEntity) {
+      targetEntity.setAttribute("gif-controller", "");
+    }
+    
+    // ============================================================
+    // FILE EXISTENCE CHECKS & ERROR HANDLING
+    // ============================================================
+    const statusDiv = document.getElementById("statusText");
+    const instrDiv = document.getElementById("instructionMsg");
+    
+    // Check .mind file
+    fetch('markers/targets.mind', { method: 'HEAD' })
+      .then(response => {
+        if (response.ok) {
+          console.log("✅ targets.mind found");
+        } else {
+          statusDiv.innerHTML = "⚠️ Missing markers/targets.mind";
+          instrDiv.innerHTML = "❌ Create markers/targets.mind from your reference image";
+        }
+      })
+      .catch(() => {
+        statusDiv.innerHTML = "⚠️ Place markers/targets.mind in folder";
+      });
+    
+    // Check if GIF exists (optional – just a warning)
+    const gifPlane = document.querySelector("#gifPlane");
+    if (gifPlane) {
+      const gifSrc = gifPlane.getAttribute("material").src;
+      if (gifSrc && gifSrc.includes("invitation.gif")) {
+        fetch(gifSrc.replace("url(", "").replace(")", ""), { method: 'HEAD' })
+          .then(r => r.ok ? console.log("✅ GIF file found") : console.warn("GIF not found at", gifSrc))
+          .catch(() => console.warn("GIF not accessible"));
+      }
+    }
+    
+    // MindAR events
+    const scene = document.querySelector("#scene");
+    scene.addEventListener("mindar-image-start", () => {
+      console.log("MindAR started – camera ready");
+      statusDiv.innerHTML = "📷 Camera ready – Scan reference image";
+      instrDiv.innerHTML = "🎯 Point camera at the reference image";
+    });
+    
+    scene.addEventListener("mindar-image-error", (e) => {
+      console.error("MindAR error:", e.detail);
+      statusDiv.innerHTML = "⚠️ Camera error – check permissions";
+    });
+    
+    // Unlock media on first touch (helps with GIF loading)
+    const unlockMedia = () => {
+      console.log("User interacted – unlocking media");
+      document.body.removeEventListener("touchstart", unlockMedia);
+      document.body.removeEventListener("mousedown", unlockMedia);
+    };
+    document.body.addEventListener("touchstart", unlockMedia, { once: true });
+    document.body.addEventListener("mousedown", unlockMedia, { once: true });
+    
+    // Final ready log
+    console.log("=========================================");
+    console.log("🎉 AR INVITATION READY (GIF MODE)");
+    console.log("Required files:");
+    console.log("  1. markers/targets.mind");
+    console.log("  2. videos/invitation.gif");
+    console.log("=========================================");
+  </script>
 </body>
 </html>
