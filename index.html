@@ -2,39 +2,112 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- A-Frame -->
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial; }
+
+    #startButton {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 15px 25px;
+      font-size: 18px;
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      z-index: 999;
+    }
+
+    #hint {
+      position: fixed;
+      bottom: 20px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 14px;
+      z-index: 999;
+    }
+  </style>
 </head>
 
 <body>
-  <a-scene mindar-image="imageTargetSrc: targets.mind;" 
-           color-space="sRGB" 
-           embedded 
-           vr-mode-ui="enabled: false" 
-           device-orientation-permission-ui="enabled: true">
 
-    <a-assets>
-      <video id="vid" src="video.mp4" preload="auto" loop="true"></video>
-    </a-assets>
+<!-- Start Button (Fix for mobile autoplay + permissions) -->
+<button id="startButton">Tap to Start AR</button>
+<div id="hint">Point your camera at the invitation</div>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+<a-scene
+  mindar-image="imageTargetSrc: targets.mind; autoStart: false;"
+  embedded
+  color-space="sRGB"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: true"
+  renderer="colorManagement: true, physicallyCorrectLights"
+>
 
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-video src="#vid" width="1" height="0.6" position="0 0 0"></a-video>
-    </a-entity>
+  <a-assets>
+    <video 
+      id="vid"
+      src="video.mp4"
+      preload="auto"
+      muted
+      playsinline
+      webkit-playsinline
+      loop
+      crossorigin="anonymous">
+    </video>
+  </a-assets>
 
-  </a-scene>
+  <!-- Camera -->
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <script>
-    const video = document.querySelector("#vid");
+  <!-- Image Target -->
+  <a-entity mindar-image-target="targetIndex: 0">
+    <a-video 
+      src="#vid"
+      width="1"
+      height="0.6"
+      position="0 0 0">
+    </a-video>
+  </a-entity>
 
-    document.querySelector("a-scene").addEventListener("targetFound", () => {
-      video.play();
+</a-scene>
+
+<script>
+  const startButton = document.querySelector("#startButton");
+  const scene = document.querySelector("a-scene");
+  const video = document.querySelector("#vid");
+
+  // Start AR after user tap (fixes camera + autoplay issues)
+  startButton.addEventListener("click", async () => {
+    startButton.style.display = "none";
+
+    await scene.systems["mindar-image-system"].start();
+
+    // Start video (muted autoplay allowed)
+    video.play().catch(() => {
+      console.log("Autoplay blocked, will play on target detection.");
     });
+  });
 
-    document.querySelector("a-scene").addEventListener("targetLost", () => {
-      video.pause();
-    });
-  </script>
+  // Play video when image is detected
+  scene.addEventListener("targetFound", () => {
+    video.play();
+  });
+
+  // Pause when lost
+  scene.addEventListener("targetLost", () => {
+    video.pause();
+  });
+</script>
+
 </body>
 </html>
