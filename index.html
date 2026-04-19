@@ -3,15 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Wedding AR Invitation ✨</title>
+<title>Wedding AR Invitation</title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
-
-.ui {
+#ui {
   position: fixed;
   bottom: 20px;
   left: 20px;
@@ -28,7 +27,7 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
 
 <body>
 
-<div class="ui" id="uiText">📷 Scan the invitation</div>
+<div id="ui">📷 Point camera at the invitation</div>
 
 <a-scene
 mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.5;"
@@ -38,26 +37,39 @@ device-orientation-permission-ui="enabled:false"
 embedded>
 
 <a-assets>
-<video id="vid" src="videos/invitation.mp4" preload="auto" playsinline muted></video>
+<video
+  id="vid"
+  src="videos/invitation.mp4"
+  preload="auto"
+  autoplay
+  loop
+  muted
+  playsinline
+  webkit-playsinline
+  crossorigin="anonymous"
+  style="display:none">
+</video>
 </a-assets>
 
 <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
 <a-entity mindar-image-target="targetIndex:0" id="target">
 
-<!-- VIDEO -->
-<a-plane id="video"
-scale="0.1 0.1 0.1"
-material="shader: flat; src: #vid;">
+<a-plane
+  id="videoPlane"
+  position="0 0 0"
+  width="1"
+  height="0.6"
+  material="shader: flat; src: #vid;">
 </a-plane>
 
-<!-- GLOW FRAME -->
-<a-plane 
-position="0 0 -0.01"
-width="1.1"
-height="0.65"
-color="#ffd700"
-material="opacity:0.25; transparent:true">
+<!-- glow frame -->
+<a-plane
+  position="0 0 -0.01"
+  width="1.05"
+  height="0.65"
+  color="#ffd700"
+  material="opacity:0.25; transparent:true">
 </a-plane>
 
 </a-entity>
@@ -65,99 +77,85 @@ material="opacity:0.25; transparent:true">
 </a-scene>
 
 <script>
-// ==========================
-// AUTO VIDEO RATIO
-// ==========================
 const video = document.querySelector("#vid");
-const plane = document.querySelector("#video");
+const plane = document.querySelector("#videoPlane");
+const target = document.querySelector("#target");
+const ui = document.getElementById("ui");
 
+// =======================
+// FORCE TEXTURE FIX
+// =======================
+function forceTexture() {
+  plane.setAttribute("material", "src", "#vid");
+}
+
+// =======================
+// AUTO RATIO FIX
+// =======================
 video.addEventListener("loadedmetadata", () => {
   const ratio = video.videoWidth / video.videoHeight;
   plane.setAttribute("width", 1);
   plane.setAttribute("height", 1 / ratio);
 });
 
-// ==========================
-// PREMIUM EFFECTS
-// ==========================
+// =======================
+// TARGET EVENTS
+// =======================
+target.addEventListener("targetFound", async () => {
+  console.log("TARGET FOUND");
 
-// HEART PARTICLES
-AFRAME.registerComponent("hearts", {
-  init() {
-    for (let i = 0; i < 12; i++) {
-      const heart = document.createElement("a-sphere");
-      heart.setAttribute("radius", 0.03);
-      heart.setAttribute("color", "#ff4d6d");
-      heart.setAttribute("position", `${(Math.random()-0.5)} ${(Math.random()-0.5)} 0`);
-      heart.setAttribute("animation", {
-        property: "position",
-        to: `${(Math.random()-0.5)} ${Math.random()+1} 0`,
-        dur: 2000 + Math.random()*1000,
-        loop: true
-      });
-      this.el.appendChild(heart);
-    }
+  ui.innerHTML = "💖 Tap screen for sound";
+
+  try {
+    video.currentTime = 0;
+    await video.play();
+
+    // force render fix
+    forceTexture();
+    setTimeout(forceTexture, 100);
+    setTimeout(forceTexture, 300);
+
+  } catch (e) {
+    console.log("Autoplay blocked");
+
+    document.body.addEventListener("click", () => {
+      video.play();
+      forceTexture();
+    }, { once: true });
   }
-});
-
-// CONFETTI BURST
-function confetti(target) {
-  for (let i = 0; i < 20; i++) {
-    const p = document.createElement("a-sphere");
-    p.setAttribute("radius", 0.02);
-    p.setAttribute("color", ["#ffd700","#ff4d6d","#ffffff"][i%3]);
-    p.setAttribute("position", "0 0 0");
-    p.setAttribute("animation", {
-      property: "position",
-      to: `${(Math.random()-0.5)*2} ${Math.random()*2} ${(Math.random()-0.5)}`,
-      dur: 800
-    });
-    target.appendChild(p);
-    setTimeout(()=>p.remove(),1000);
-  }
-}
-
-// ==========================
-// MAIN CONTROLLER
-// ==========================
-
-const target = document.querySelector("#target");
-const ui = document.getElementById("uiText");
-
-let started = false;
-
-target.addEventListener("targetFound", () => {
-  ui.innerHTML = "💖 Tap to play with sound";
-
-  // scale animation
-  plane.setAttribute("animation", {
-    property: "scale",
-    to: "1 1 1",
-    dur: 500,
-    easing: "easeOutBack"
-  });
-
-  video.play();
-
-  // effects
-  target.setAttribute("hearts", "");
-  confetti(target);
-
-  started = true;
 });
 
 target.addEventListener("targetLost", () => {
-  ui.innerHTML = "📷 Scan again";
   video.pause();
+  ui.innerHTML = "📷 Scan invitation again";
 });
 
+// =======================
 // TAP TO ENABLE SOUND
+// =======================
 document.body.addEventListener("click", () => {
-  if (started) {
+  if (video.paused === false) {
     video.muted = false;
     video.play();
     ui.innerHTML = "✨ Enjoy your invitation ✨";
   }
+});
+
+// =======================
+// DEBUG CHECKS
+// =======================
+video.addEventListener("error", () => {
+  ui.innerHTML = "❌ Video not found (check /videos folder)";
+});
+
+fetch("markers/targets.mind")
+.then(r => {
+  if (!r.ok) {
+    ui.innerHTML = "❌ targets.mind missing";
+  }
+})
+.catch(() => {
+  ui.innerHTML = "❌ cannot load targets.mind";
 });
 
 </script>
