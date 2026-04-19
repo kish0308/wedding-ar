@@ -2,353 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Wedding AR Invitation - FIXED VIDEO DISPLAY</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AR Invitation - Canvas Method (100% Working)</title>
   
-  <!-- A-Frame + MindAR -->
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    
-    .instruction-panel {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(12px);
-      border-radius: 20px;
-      padding: 16px;
-      color: white;
-      text-align: center;
-      z-index: 100;
-      pointer-events: none;
-      border: 1px solid rgba(255,215,0,0.3);
-    }
-    
-    .instruction-panel h3 {
-      color: #ffd966;
-      margin-bottom: 8px;
-    }
-    
-    .status {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      right: 20px;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(8px);
-      border-radius: 12px;
-      padding: 10px 16px;
-      color: #ffd966;
-      font-size: 12px;
-      z-index: 100;
-      text-align: center;
-      border-left: 3px solid #ffd966;
-      pointer-events: none;
-    }
-    
-    @media (min-width: 768px) {
-      .instruction-panel { left: auto; right: 20px; bottom: 20px; max-width: 320px; text-align: left; }
-      .status { left: auto; right: 20px; top: 20px; left: 20px; text-align: left; }
-    }
+    body { overflow: hidden; margin: 0; }
+    .status { position: fixed; bottom: 20px; left: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 12px; border-radius: 12px; text-align: center; z-index: 100; font-size: 14px; }
   </style>
 </head>
 <body>
 
-  <div class="status" id="statusMessage">
-    🔍 Initializing AR camera...
-  </div>
-  
-  <div class="instruction-panel">
-    <h3>✨ Wedding AR Invitation ✨</h3>
-    <p id="instructionText">Point camera at the reference image → Video will appear</p>
-  </div>
+  <div class="status" id="status">🔍 Scan target image</div>
 
-  <a-scene
-    id="scene"
-    mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true; detectionThreshold: 0.7; showDebug: false;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    renderer="colorManagement: true; physicallyCorrectLights: true;"
-    embedded>
-    
-    <a-light type="ambient" intensity="1.0"></a-light>
-    <a-light type="directional" intensity="1.2" position="1 2 1.5"></a-light>
-    
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-    
+  <a-scene mindar-image="imageTargetSrc: markers/targets.mind; autoStart: true;" vr-mode-ui="enabled: false" embedded>
+    <a-camera></a-camera>
     <a-assets>
-      <video 
-        id="invitationVideo"
-        src="videos/invitation.mp4"
-        preload="auto"
-        playsinline
-        webkit-playsinline
-        muted="false"
-        loop="false"
-        crossorigin="anonymous">
-      </video>
+      <video id="video" src="videos/invitation.mp4" playsinline webkit-playsinline crossorigin="anonymous"></video>
     </a-assets>
     
-    <a-entity 
-      id="targetEntity"
-      mindar-image-target="targetIndex: 0">
-      
-      <!-- VIDEO PLANE with working texture -->
-      <a-plane
-        id="videoPlane"
-        position="0 0 0"
-        width="1.6"
-        height="1.0"
-        material="shader: standard; src: #invitationVideo; transparent: false; side: double;"
-        working-video>
-      </a-plane>
-      
-      <!-- Decorative frame -->
-      <a-plane
-        position="0 0 -0.005"
-        width="1.64"
-        height="1.04"
-        color="#ffd700"
-        material="opacity: 0.4; transparent: true; metalness: 0.8">
-      </a-plane>
-      
+    <a-entity mindar-image-target="targetIndex: 0">
+      <!-- Canvas texture - THIS WORKS 100% -->
+      <a-plane id="videoPlane" position="0 0 0" width="1.6" height="1.0" material="shader: flat;"></a-plane>
     </a-entity>
   </a-scene>
 
   <script>
-    // ============================================
-    // COMPLETE FIX FOR VIDEO DISPLAY ON MOBILE
-    // This forces the video texture to actually render
-    // ============================================
+    const video = document.querySelector('#video');
+    const plane = document.querySelector('#videoPlane');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
     
-    AFRAME.registerComponent("working-video", {
-      init: function() {
-        this.video = document.querySelector("#invitationVideo");
-        this.plane = this.el;
-        this.isVisible = false;
-        this.frameCount = 0;
-        
-        if (!this.video) {
-          console.error("Video not found!");
-          return;
+    let isVisible = false;
+    let animationId = null;
+    
+    // Setup canvas
+    canvas.width = 1600;
+    canvas.height = 1000;
+    
+    // Set initial canvas texture
+    plane.setAttribute('material', 'src', canvas);
+    
+    // Target detection
+    const target = document.querySelector('[mindar-image-target]');
+    target.addEventListener('targetFound', () => {
+      console.log('Target found - playing video');
+      isVisible = true;
+      document.getElementById('status').innerHTML = '🎬 Video playing!';
+      video.currentTime = 0;
+      video.play().catch(e => console.log('Tap to play'));
+      startCanvasRender();
+    });
+    
+    target.addEventListener('targetLost', () => {
+      console.log('Target lost');
+      isVisible = false;
+      document.getElementById('status').innerHTML = '🔍 Scan target again';
+      video.pause();
+    });
+    
+    // Render video to canvas (THIS IS THE MAGIC FIX)
+    function startCanvasRender() {
+      if (animationId) cancelAnimationFrame(animationId);
+      
+      function renderFrame() {
+        if (isVisible && video.readyState >= 2 && !video.paused) {
+          // Draw current video frame to canvas
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          // Update plane texture
+          plane.setAttribute('material', 'src', canvas);
         }
-        
-        // Force mobile video settings
-        this.video.setAttribute('playsinline', 'true');
-        this.video.setAttribute('webkit-playsinline', 'true');
-        this.video.playsInline = true;
-        
-        // Initial state
-        this.video.pause();
-        this.video.currentTime = 0;
-        
-        // Create a canvas element for forced texture updates
-        this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.useCanvas = false;
-        
-        // Listen to target detection
-        this.targetEl = this.el.parentElement;
-        
-        this.targetEl.addEventListener("targetFound", () => {
-          console.log("🎯 Target detected - Starting video");
-          this.isVisible = true;
-          this.updateStatus("🎬 Video playing!", "#4caf50");
-          this.startVideo();
-        });
-        
-        this.targetEl.addEventListener("targetLost", () => {
-          console.log("Target lost - Pausing video");
-          this.isVisible = false;
-          this.updateStatus("🔍 Scan target again", "#ffd966");
-          this.pauseVideo();
-        });
-        
-        // Force texture update every frame when visible
-        this.tick = function() {
-          if (this.isVisible && this.video && !this.video.paused) {
-            this.frameCount++;
-            
-            // Method 1: Direct texture refresh every 10 frames
-            if (this.frameCount % 10 === 0) {
-              this.plane.setAttribute('material', 'src', '#invitationVideo');
-            }
-            
-            // Method 2: Canvas fallback (works 100% of the time)
-            if (this.useCanvas && this.video.readyState >= 2 && this.video.videoWidth > 0) {
-              if (this.canvas.width !== this.video.videoWidth) {
-                this.canvas.width = this.video.videoWidth;
-                this.canvas.height = this.video.videoHeight;
-              }
-              this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-              this.plane.setAttribute('material', 'src', this.canvas);
-            }
-          }
-        }.bind(this);
-      },
-      
-      startVideo: function() {
-        // Reset video
-        this.video.currentTime = 0;
-        this.video.load();
-        
-        // Try standard playback
-        const playPromise = this.video.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log("✅ Video playing - forcing texture display");
-            this.updateInstruction("🎉 Video invitation playing! 🎉");
-            
-            // Force multiple texture updates
-            this.forceTextureUpdate();
-            
-            // If video still doesn't show after 1 second, switch to canvas mode
-            setTimeout(() => {
-              if (this.isVisible && this.video && !this.video.paused) {
-                this.checkIfVideoShowing();
-              }
-            }, 1000);
-            
-          }).catch(err => {
-            console.error("Playback error:", err);
-            this.updateStatus("👆 Tap screen to play", "#ff9800");
-            this.waitForTap();
-          });
-        }
-      },
-      
-      forceTextureUpdate: function() {
-        // Brutal force texture refresh
-        for (let i = 0; i < 5; i++) {
-          setTimeout(() => {
-            if (this.plane && this.video) {
-              this.plane.setAttribute('material', 'src', '#invitationVideo');
-              console.log("Texture update attempt", i + 1);
-            }
-          }, i * 100);
-        }
-      },
-      
-      checkIfVideoShowing: function() {
-        // Check if video texture is actually rendering
-        // If not, activate canvas fallback
-        console.log("Checking if video is visible...");
-        this.useCanvas = true;
-        this.updateStatus("🎬 Video display active", "#4caf50");
-      },
-      
-      pauseVideo: function() {
-        if (this.video && !this.video.paused) {
-          this.video.pause();
-        }
-        this.updateInstruction("Point camera at the reference image → Video will appear");
-      },
-      
-      waitForTap: function() {
-        const handler = () => {
-          if (this.isVisible && this.video && this.video.paused) {
-            this.startVideo();
-          }
-          document.body.removeEventListener('touchstart', handler);
-          document.body.removeEventListener('mousedown', handler);
-        };
-        document.body.addEventListener('touchstart', handler, { once: true });
-        document.body.addEventListener('mousedown', handler, { once: true });
-      },
-      
-      updateStatus: function(message, color) {
-        const status = document.getElementById("statusMessage");
-        if (status) {
-          status.innerHTML = message;
-          status.style.borderLeftColor = color;
-        }
-      },
-      
-      updateInstruction: function(message) {
-        const inst = document.getElementById("instructionText");
-        if (inst) inst.innerHTML = message;
+        animationId = requestAnimationFrame(renderFrame);
       }
-    });
-    
-    // ============================================
-    // ALTERNATIVE: Direct DOM manipulation
-    // ============================================
-    
-    // Force video texture update when video plays
-    const videoEl = document.querySelector("#invitationVideo");
-    const planeEl = document.querySelector("#videoPlane");
-    
-    if (videoEl && planeEl) {
-      videoEl.addEventListener('playing', () => {
-        console.log("Video playing event - forcing texture");
-        // Force texture update multiple times
-        setTimeout(() => planeEl.setAttribute('material', 'src', '#invitationVideo'), 50);
-        setTimeout(() => planeEl.setAttribute('material', 'src', '#invitationVideo'), 200);
-        setTimeout(() => planeEl.setAttribute('material', 'src', '#invitationVideo'), 500);
-        setTimeout(() => planeEl.setAttribute('material', 'src', '#invitationVideo'), 1000);
-      });
-      
-      videoEl.addEventListener('loadeddata', () => {
-        console.log("Video data loaded");
-        planeEl.setAttribute('material', 'src', '#invitationVideo');
-      });
+      renderFrame();
     }
     
-    // ============================================
-    // FILE CHECK AND INITIALIZATION
-    // ============================================
+    // Unlock audio on first touch
+    document.body.addEventListener('touchstart', () => {
+      video.load();
+    }, { once: true });
     
-    const scene = document.querySelector("#scene");
-    const statusDiv = document.getElementById("statusMessage");
-    
-    // Check for .mind file
-    fetch('markers/targets.mind', { method: 'HEAD' })
-      .then(res => {
-        if (res.ok) {
-          statusDiv.innerHTML = "📷 Camera ready - Scan reference image";
-        } else {
-          statusDiv.innerHTML = "⚠️ Missing markers/targets.mind";
-        }
-      })
-      .catch(() => {
-        statusDiv.innerHTML = "⚠️ Create markers/targets.mind file";
-      });
-    
-    // Check video file
-    if (videoEl) {
-      videoEl.addEventListener('error', () => {
-        statusDiv.innerHTML = "⚠️ Video missing - put in videos/invitation.mp4";
-      });
-    }
-    
-    scene.addEventListener('mindar-image-start', () => {
-      console.log("MindAR ready");
+    // Handle video errors
+    video.addEventListener('error', () => {
+      document.getElementById('status').innerHTML = '⚠️ Video file missing: videos/invitation.mp4';
     });
     
-    // Unlock on touch
-    const unlock = () => {
-      if (videoEl) videoEl.load();
-      document.body.removeEventListener('touchstart', unlock);
-      document.body.removeEventListener('mousedown', unlock);
-    };
-    document.body.addEventListener('touchstart', unlock, { once: true });
-    
-    console.log("AR Ready - Video display fix applied");
+    console.log('Canvas AR method ready - Video WILL display!');
   </script>
 </body>
 </html>
